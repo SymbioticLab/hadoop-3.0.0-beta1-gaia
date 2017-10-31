@@ -34,6 +34,13 @@
   </properties>
 
   <dependencies>
+    <!-- must add ?
+    -->
+    <dependency>
+      <groupId>edu.umich.gaia</groupId>
+      <artifactId>gaia-lib</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-yarn-client</artifactId>

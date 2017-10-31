@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.mapred;
 
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -1259,7 +1261,26 @@ abstract public class Task implements Writable, Configurable {
     int retries = MAX_RETRIES;
     while (true) {
       try {
-        umbilical.done(getTaskID());
+        if (isMapTask() && conf.getNumReduceTasks() > 0) {
+          int numReduceTasks = conf.getNumReduceTasks();
+          long[] startOffsetArray = new long[numReduceTasks];
+          long[] partLengthArray = new long[numReduceTasks];
+
+          for (Map.Entry<Integer, Long> startOffset : startOffsetMap.entrySet()) {
+            startOffsetArray[startOffset.getKey()] = startOffset.getValue();
+          }
+          for (Map.Entry<Integer, Long> partLength : partLengthMap.entrySet()) {
+            partLengthArray[partLength.getKey()] = partLength.getValue();
+          }
+
+          umbilical.done(getTaskID(),
+                  mapOutputFile.getOutputFile().toString(),
+                  startOffsetArray, partLengthArray);
+        } else {
+          umbilical.done(getTaskID(),
+                  new String(),
+                  new long[0], new long[0]);
+        }
         LOG.info("Task '" + taskId + "' done.");
         return;
       } catch (IOException ie) {
@@ -1801,4 +1822,7 @@ abstract public class Task implements Writable, Configurable {
   void setExtraData(BytesWritable extraData) {
     this.extraData = extraData;
   }
+
+  protected static ConcurrentMap<Integer, Long> startOffsetMap = new ConcurrentHashMap<>();
+  protected static ConcurrentMap<Integer, Long> partLengthMap = new ConcurrentHashMap<>();
 }

@@ -119,6 +119,10 @@
         <!-- exclude things that came in via transitive in shaded runtime and api -->
         <exclusion>
           <groupId>io.netty</groupId>
+          <artifactId>netty-all</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
           <artifactId>netty</artifactId>
         </exclusion>
         <exclusion>

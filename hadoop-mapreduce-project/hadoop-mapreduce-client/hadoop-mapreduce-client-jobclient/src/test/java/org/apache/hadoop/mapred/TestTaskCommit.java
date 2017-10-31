@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -119,7 +120,9 @@ public class TestTaskCommit extends HadoopTestCase {
     }
 
     @Override
-    public void done(TaskAttemptID taskid) throws IOException {
+    public void done(TaskAttemptID taskid,
+                     String mapOutputFilePath,
+                     long[] startOffsetArray, long[] partLengthArray) throws IOException {
       taskDone = true;
     }
 

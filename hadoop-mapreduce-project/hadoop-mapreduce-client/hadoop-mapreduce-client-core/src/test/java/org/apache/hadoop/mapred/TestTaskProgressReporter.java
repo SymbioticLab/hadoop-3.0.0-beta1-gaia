@@ -20,6 +20,7 @@ package org.apache.hadoop.mapred;
 
 import java.io.IOException;
 import java.util.Random;
+import java.util.Map;
 
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -94,7 +95,9 @@ public class TestTaskProgressReporter {
     }
 
     @Override
-    public void done(TaskAttemptID taskid) throws IOException {
+    public void done(TaskAttemptID taskid,
+                     String mapOutputFilePath,
+                     long[] startOffsetArray, long[] partLengthArray) throws IOException {
     }
 
     @Override

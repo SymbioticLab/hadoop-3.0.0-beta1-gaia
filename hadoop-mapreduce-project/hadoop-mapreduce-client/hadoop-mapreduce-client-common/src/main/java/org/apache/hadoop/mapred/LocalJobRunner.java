@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.mapred;
 
+import java.util.concurrent.ConcurrentMap;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -709,7 +710,9 @@ public class LocalJobRunner implements ClientProtocol {
     }
     
     @Override
-    public void done(TaskAttemptID taskId) throws IOException {
+    public void done(TaskAttemptID taskId,
+                     String mapOutputFilePath,
+                     long[] startOffsetArray, long[] partLengthArray) throws IOException {
       int taskIndex = mapIds.indexOf(taskId);
       if (taskIndex >= 0) {                       // mapping
         status.setMapProgress(1.0f);

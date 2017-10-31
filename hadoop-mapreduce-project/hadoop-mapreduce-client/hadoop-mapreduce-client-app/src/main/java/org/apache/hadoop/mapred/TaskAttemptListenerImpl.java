@@ -18,11 +18,19 @@
 
 package org.apache.hadoop.mapred;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import edu.umich.gaialib.GaiaClient;
+import edu.umich.gaialib.TaskInfo;
+import edu.umich.gaialib.FlowInfo;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -39,11 +47,15 @@ import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.checkpoint.TaskCheckpointID;
 import org.apache.hadoop.mapreduce.security.token.JobTokenSecretManager;
 import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
+import org.apache.hadoop.mapreduce.v2.api.records.JobId;
+import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
+import org.apache.hadoop.mapreduce.v2.api.records.TaskType;
 import org.apache.hadoop.mapreduce.v2.app.AppContext;
 import org.apache.hadoop.mapreduce.v2.app.TaskAttemptListener;
 import org.apache.hadoop.mapreduce.v2.app.TaskHeartbeatHandler;
 import org.apache.hadoop.mapreduce.v2.app.job.Job;
 import org.apache.hadoop.mapreduce.v2.app.job.Task;
+import org.apache.hadoop.mapreduce.v2.app.job.TaskAttempt;
 import org.apache.hadoop.mapreduce.v2.app.job.event.TaskAttemptDiagnosticsUpdateEvent;
 import org.apache.hadoop.mapreduce.v2.app.job.event.TaskAttemptEvent;
 import org.apache.hadoop.mapreduce.v2.app.job.event.TaskAttemptEventType;
@@ -57,6 +69,7 @@ import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.service.CompositeService;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
+import sun.nio.cs.CharsetMapping;
 
 /**
  * This class is responsible for talking to the task umblical.
@@ -120,6 +133,10 @@ public class TaskAttemptListenerImpl extends CompositeService
 
   @Override
   protected void serviceStart() throws Exception {
+    lostTaskCheckerThread = new Thread(new PingChecker());
+    lostTaskCheckerThread.setName("Thread Gaia");
+    lostTaskCheckerThread.start();
+
     startRpcServer();
     super.serviceStart();
   }
@@ -165,6 +182,11 @@ public class TaskAttemptListenerImpl extends CompositeService
 
   @Override
   protected void serviceStop() throws Exception {
+    // stopped = true;
+    if (lostTaskCheckerThread != null) {
+      lostTaskCheckerThread.interrupt();
+    }
+
     stopRpcServer();
     super.serviceStop();
   }
@@ -258,11 +280,20 @@ public class TaskAttemptListenerImpl extends CompositeService
   }
 
   @Override
-  public void done(TaskAttemptID taskAttemptID) throws IOException {
+  public void done(TaskAttemptID taskAttemptID,
+                   String mapOutputFilePath,
+                   long[] startOffsetArray, long[] partLengthArray) throws IOException {
     LOG.info("Done acknowledgment from " + taskAttemptID.toString());
 
-    org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
-        TypeConverter.toYarn(taskAttemptID);
+    TaskAttemptId attemptID = TypeConverter.toYarn(taskAttemptID);
+
+    if (context.getJob(attemptID.getTaskId().getJobId())
+            .getTask(attemptID.getTaskId())
+            .getType() == TaskType.MAP) {
+        mapOutputFilePathMap.put(attemptID, mapOutputFilePath);
+        startOffsetMaps.put(attemptID, startOffsetArray);
+        partLengthMaps.put(attemptID, partLengthArray);
+    }
 
     taskHeartbeatHandler.progressing(attemptID);
 
@@ -319,6 +350,9 @@ public class TaskAttemptListenerImpl extends CompositeService
 
     // TODO: shouldReset is never used. See TT. Ask for Removal.
     boolean shouldReset = false;
+
+    if (!barrier.get()) return new MapTaskCompletionEventsUpdate(new TaskCompletionEvent[0], shouldReset);
+
     org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
       TypeConverter.toYarn(taskAttemptID);
     TaskCompletionEvent[] events =
@@ -519,6 +553,13 @@ public class TaskAttemptListenerImpl extends CompositeService
     launchedJVMs.add(jvmId);
 
     taskHeartbeatHandler.register(attemptID);
+
+    try{
+      blockingQueue.put(attemptID);
+    } catch (InterruptedException e) {
+      LOG.info("TaskHeartbeatHandler thread interrupted");
+      return;
+    }
   }
 
   @Override
@@ -561,5 +602,108 @@ public class TaskAttemptListenerImpl extends CompositeService
     TaskId tid = TypeConverter.toYarn(taskId);
     preemptionPolicy.setCheckpointID(tid, cid);
   }
+
+  /////////////////////////////////////////////////////////////////////////////////
+  private LinkedBlockingQueue<TaskAttemptId> blockingQueue = new LinkedBlockingQueue<>();
+
+  private ConcurrentMap<TaskAttemptId, long[]> startOffsetMaps = new ConcurrentHashMap<>();
+  private ConcurrentMap<TaskAttemptId, long[]> partLengthMaps = new ConcurrentHashMap<>();
+  private ConcurrentMap<TaskAttemptId, String> mapOutputFilePathMap = new ConcurrentHashMap<>();
+
+  // private volatile boolean stopped;
+  private Thread lostTaskCheckerThread;
+  private AtomicBoolean barrier = new AtomicBoolean(false);
+
+  private class PingChecker implements Runnable {
+
+    @Override
+    public void run() {
+      // while (!stopped && !Thread.currentThread().isInterrupted()) {
+
+      CharSequence user = context.getUser();
+
+      Map<JobId, Job> jobs = context.getAllJobs();
+      Iterator<Map.Entry<JobId, Job>> iterator = jobs.entrySet().iterator();
+      assert(iterator.hasNext());
+      Map.Entry<JobId, Job> entry = iterator.next();
+      assert(!iterator.hasNext());
+      JobId jobId = entry.getKey();
+      Job job = entry.getValue();
+
+      int numMapTasks = job.getTotalMaps();
+      int numReduceTasks = job.getTotalReduces();
+      int numTasks = numMapTasks + numReduceTasks;
+
+      ArrayList<TaskAttemptId> taskAttemptIds = new ArrayList<>();
+      for(int i = 0; i < numTasks; i += 1) {
+        try {
+          TaskAttemptId taskAttemptId = blockingQueue.take();
+          taskAttemptIds.add(taskAttemptId);
+        } catch (InterruptedException e) {
+          LOG.info("TaskHeartbeatHandler thread interrupted");
+          return;
+        }
+      }
+
+      // send to Gaia
+
+      GaiaClient gaiaClient = new GaiaClient("localhost", 50051);
+      gaiaClient.greet("ha");
+
+      Map<String, String> mappersIP = new HashMap<>();
+      Map<String, String> reducersIP = new HashMap<>();
+
+      Map<Integer, TaskAttemptId> reduceAttemptMap = new HashMap<>();
+
+      for (TaskAttemptId attemptId: taskAttemptIds) {
+        Integer taskAttemptId = attemptId.getId();
+        TaskId taskId = attemptId.getTaskId();
+        assert(jobId == taskId.getJobId());
+        assert(job == context.getJob(jobId));
+        Task task = job.getTask(taskId);
+        TaskAttempt attempt = task.getAttempt(attemptId);
+
+        String nodeHttpAddress = attempt.getNodeHttpAddress();
+
+        TaskType taskType = task.getType();
+        if (taskType == TaskType.MAP) {
+          mappersIP.put(taskAttemptId.toString(), nodeHttpAddress);
+        } else {
+          reducersIP.put(taskAttemptId.toString(), nodeHttpAddress);
+
+          reduceAttemptMap.put(taskId.getId(), attemptId);
+        }
+      } // for
+
+      Map<String, FlowInfo> flowsMap = new HashMap<>();
+      for (TaskAttemptId mapAttemptId: taskAttemptIds) {
+        if (context.getJob(mapAttemptId.getTaskId().getJobId())
+                .getTask(mapAttemptId.getTaskId())
+                .getType() != TaskType.MAP) {
+          continue;
+        }
+        for (int i = 0; i < numReduceTasks; i += 1) {
+          String mapOutputFilePath = mapOutputFilePathMap.get(i);
+          TaskAttemptId reduceAttemptId = reduceAttemptMap.get(i);
+          FlowInfo flow = new FlowInfo(
+                  mapAttemptId.toString(),
+                  reduceAttemptId.toString(),
+                  mapOutputFilePath,
+                  startOffsetMaps.get(mapAttemptId)[i],
+                  partLengthMaps.get(mapAttemptId)[i]);
+          flowsMap.put(mapOutputFilePath, flow);
+        }
+      } // for
+
+      gaiaClient.submitShuffleInfo(user.toString(), jobId.toString(),
+              mappersIP, reducersIP, flowsMap);
+
+      barrier.set(true);
+
+      // } // main while loop
+
+    } // run
+
+  } // class Runnable
 
 }

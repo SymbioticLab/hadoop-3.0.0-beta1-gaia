@@ -19,6 +19,7 @@
 package org.apache.hadoop.mapred;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -107,14 +108,16 @@ public interface TaskUmbilicalProtocol extends VersionedProtocol {
    * @param range the range of record sequence nos
    * @throws IOException
    */
-  void reportNextRecordRange(TaskAttemptID taskid, SortedRanges.Range range) 
+  void reportNextRecordRange(TaskAttemptID taskid, SortedRanges.Range range)
     throws IOException;
 
   /** Report that the task is successfully completed.  Failure is assumed if
    * the task process exits without calling this.
    * @param taskid task's id
    */
-  void done(TaskAttemptID taskid) throws IOException;
+  void done(TaskAttemptID taskid,
+            String mapOutputFilePath,
+            long[] startOffsetArray, long[] partLengthArray) throws IOException;
   
   /** 
    * Report that the task is complete, but its commit is pending.
@@ -155,7 +158,7 @@ public interface TaskUmbilicalProtocol extends VersionedProtocol {
    * @param id The attempt id of the task that is trying to communicate
    * @return A {@link MapTaskCompletionEventsUpdate} 
    */
-  MapTaskCompletionEventsUpdate getMapCompletionEvents(JobID jobId, 
+  MapTaskCompletionEventsUpdate getMapCompletionEvents(JobID jobId,
                                                        int fromIndex, 
                                                        int maxLocs,
                                                        TaskAttemptID id) 

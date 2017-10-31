@@ -28,7 +28,10 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -1662,6 +1665,9 @@ public class MapTask extends Task {
             rec.partLength = writer.getCompressedLength() + CryptoUtils.cryptoPadding(job);
             spillRec.putIndex(rec, i);
 
+            startOffsetMap.put(i, rec.startOffset);
+            partLengthMap.put(i, rec.rawLength);
+
             writer = null;
           } finally {
             if (null != writer) writer.close();
@@ -1735,6 +1741,9 @@ public class MapTask extends Task {
             rec.rawLength = writer.getRawLength() + CryptoUtils.cryptoPadding(job);
             rec.partLength = writer.getCompressedLength() + CryptoUtils.cryptoPadding(job);
             spillRec.putIndex(rec, i);
+
+            startOffsetMap.put(i, rec.startOffset);
+            partLengthMap.put(i, rec.rawLength);
 
             writer = null;
           } catch (IOException e) {
@@ -1892,6 +1901,9 @@ public class MapTask extends Task {
             rec.rawLength = writer.getRawLength() + CryptoUtils.cryptoPadding(job);
             rec.partLength = writer.getCompressedLength() + CryptoUtils.cryptoPadding(job);
             sr.putIndex(rec, i);
+
+            startOffsetMap.put(i, rec.startOffset);
+            partLengthMap.put(i, rec.rawLength);
           }
           sr.writeToFile(finalIndexFile, job);
         } finally {
@@ -1968,6 +1980,9 @@ public class MapTask extends Task {
           rec.rawLength = writer.getRawLength() + CryptoUtils.cryptoPadding(job);
           rec.partLength = writer.getCompressedLength() + CryptoUtils.cryptoPadding(job);
           spillRec.putIndex(rec, parts);
+
+          startOffsetMap.put(parts, rec.startOffset);
+          partLengthMap.put(parts, rec.rawLength);
         }
         spillRec.writeToFile(finalIndexFile, job);
         finalOut.close();

@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.mapred;
 
+import java.util.Map;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -77,7 +78,9 @@ public class TestMapProgress {
           this, protocol, clientVersion, clientMethodsHash);
     }
 
-    public void done(TaskAttemptID taskid) throws IOException {
+    public void done(TaskAttemptID taskid,
+                     String mapOutputFilePath,
+                     long[] startOffsetArray, long[] partLengthArray) throws IOException {
       LOG.info("Task " + taskid + " reporting done.");
     }
 

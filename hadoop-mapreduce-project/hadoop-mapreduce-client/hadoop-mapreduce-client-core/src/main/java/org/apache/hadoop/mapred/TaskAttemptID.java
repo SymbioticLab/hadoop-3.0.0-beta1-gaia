@@ -20,6 +20,8 @@ package org.apache.hadoop.mapred;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
