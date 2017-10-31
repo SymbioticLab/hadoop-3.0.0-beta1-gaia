@@ -667,9 +667,9 @@ public class TaskAttemptListenerImpl extends CompositeService
 
         TaskType taskType = task.getType();
         if (taskType == TaskType.MAP) {
-          mappersIP.put(taskAttemptId.toString(), nodeHttpAddress);
+          mappersIP.put(attemptId.toString(), nodeHttpAddress);
         } else {
-          reducersIP.put(taskAttemptId.toString(), nodeHttpAddress);
+          reducersIP.put(attemptId.toString(), nodeHttpAddress);
 
           reduceAttemptMap.put(taskId.getId(), attemptId);
         }
@@ -683,7 +683,7 @@ public class TaskAttemptListenerImpl extends CompositeService
           continue;
         }
         for (int i = 0; i < numReduceTasks; i += 1) {
-          String mapOutputFilePath = mapOutputFilePathMap.get(i);
+          String mapOutputFilePath = mapOutputFilePathMap.get(mapAttemptId);
           TaskAttemptId reduceAttemptId = reduceAttemptMap.get(i);
           FlowInfo flow = new FlowInfo(
                   mapAttemptId.toString(),
