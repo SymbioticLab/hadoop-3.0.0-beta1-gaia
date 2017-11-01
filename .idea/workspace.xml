@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="11628499-6a80-41fb-be94-1b8b14f64933" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-app/pom.xml" afterPath="$PROJECT_DIR$/hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-app/pom.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-core/pom.xml" afterPath="$PROJECT_DIR$/hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-core/pom.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/hadoop-project/pom.xml" afterPath="$PROJECT_DIR$/hadoop-project/pom.xml" />
-    </list>
+    <list default="true" id="11628499-6a80-41fb-be94-1b8b14f64933" name="Default" comment="" />
     <ignored path="$PROJECT_DIR$/hadoop-common-project/hadoop-minikdc/target/" />
     <ignored path="$PROJECT_DIR$/hadoop-cloud-storage-project/hadoop-cloud-storage/target/" />
     <ignored path="$PROJECT_DIR$/hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-common/target/" />
@@ -159,7 +154,7 @@
         <entry file="file://$PROJECT_DIR$/hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-core/pom.xml">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="334">
-              <caret line="53" column="20" lean-forward="true" selection-start-line="53" selection-start-column="20" selection-end-line="53" selection-end-column="20" />
+              <caret line="53" column="20" lean-forward="false" selection-start-line="53" selection-start-column="20" selection-end-line="53" selection-end-column="20" />
               <folding />
             </state>
           </provider>
@@ -440,7 +435,7 @@
     <entry file="file://$PROJECT_DIR$/hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-core/pom.xml">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="334">
-          <caret line="53" column="20" lean-forward="true" selection-start-line="53" selection-start-column="20" selection-end-line="53" selection-end-column="20" />
+          <caret line="53" column="20" lean-forward="false" selection-start-line="53" selection-start-column="20" selection-end-line="53" selection-end-column="20" />
           <folding />
         </state>
       </provider>
