@@ -34,8 +34,14 @@
 
   <dependencies>
     <dependency>
-    <groupId>edu.umich.gaia</groupId>
+      <groupId>edu.umich.gaia</groupId>
       <artifactId>gaia-lib</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-netty</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
