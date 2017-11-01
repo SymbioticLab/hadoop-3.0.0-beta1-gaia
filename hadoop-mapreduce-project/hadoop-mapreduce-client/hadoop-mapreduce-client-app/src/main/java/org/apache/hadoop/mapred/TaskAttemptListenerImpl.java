@@ -645,9 +645,39 @@ public class TaskAttemptListenerImpl extends CompositeService
         }
       }
 
-      // send to Gaia
+      try {
+        gaia(taskAttemptIds);
+      } catch (Exception e){
+        LOG.info("GaiaClient Exception");
+        try {
+          gaia(taskAttemptIds);
+        } catch (Exception E) {
+          LOG.info("GaiaClient Exception Again");
+        }
+      } finally {
+        barrier.set(true);
+      }
+      // } // main while loop
 
-      GaiaClient gaiaClient = new GaiaClient("localhost", 50051);
+    } // run
+
+    public void gaia(ArrayList<TaskAttemptId> taskAttemptIds) throws Exception {
+      CharSequence user = context.getUser();
+
+      Map<JobId, Job> jobs = context.getAllJobs();
+      Iterator<Map.Entry<JobId, Job>> iterator = jobs.entrySet().iterator();
+      assert(iterator.hasNext());
+      Map.Entry<JobId, Job> entry = iterator.next();
+      assert(!iterator.hasNext());
+      JobId jobId = entry.getKey();
+      Job job = entry.getValue();
+
+      int numMapTasks = job.getTotalMaps();
+      int numReduceTasks = job.getTotalReduces();
+      int numTasks = numMapTasks + numReduceTasks;
+
+      GaiaClient gaiaClient = new GaiaClient("node-1", 50051);
+
       gaiaClient.greet("ha");
 
       Map<String, String> mappersIP = new HashMap<>();
@@ -697,12 +727,7 @@ public class TaskAttemptListenerImpl extends CompositeService
 
       gaiaClient.submitShuffleInfo(user.toString(), jobId.toString(),
               mappersIP, reducersIP, flowsMap);
-
-      barrier.set(true);
-
-      // } // main while loop
-
-    } // run
+    }
 
   } // class Runnable
 
