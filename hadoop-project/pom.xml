@@ -148,6 +148,12 @@
          <groupId>edu.umich.gaia</groupId>
          <artifactId>gaia-lib</artifactId>
          <version>1.0-SNAPSHOT</version>
+        <exclusions>
+          <exclusion>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty</artifactId>
+          </exclusion>
+        </exclusions>
        </dependency>
       <dependency>
         <groupId>com.squareup.okhttp</groupId>
