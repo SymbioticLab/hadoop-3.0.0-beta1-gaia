@@ -351,17 +351,24 @@ public class TaskAttemptListenerImpl extends CompositeService
     // TODO: shouldReset is never used. See TT. Ask for Removal.
     boolean shouldReset = false;
 
-    if (!barrier.get()) return new MapTaskCompletionEventsUpdate(new TaskCompletionEvent[0], shouldReset);
+    if (barrier.get()) {
+      org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
+              TypeConverter.toYarn(taskAttemptID);
+      TaskCompletionEvent[] events =
+              context.getJob(attemptID.getTaskId().getJobId()).getMapAttemptCompletionEvents(
+                      startIndex, maxEvents);
 
-    org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
-      TypeConverter.toYarn(taskAttemptID);
-    TaskCompletionEvent[] events =
-        context.getJob(attemptID.getTaskId().getJobId()).getMapAttemptCompletionEvents(
-            startIndex, maxEvents);
+      taskHeartbeatHandler.progressing(attemptID);
 
-    taskHeartbeatHandler.progressing(attemptID);
-    
-    return new MapTaskCompletionEventsUpdate(events, shouldReset);
+      return new MapTaskCompletionEventsUpdate(events, shouldReset);
+    } else {
+      org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
+              TypeConverter.toYarn(taskAttemptID);
+
+      taskHeartbeatHandler.progressing(attemptID);
+
+      return new MapTaskCompletionEventsUpdate(new TaskCompletionEvent[0], shouldReset);
+    }
   }
 
   @Override
