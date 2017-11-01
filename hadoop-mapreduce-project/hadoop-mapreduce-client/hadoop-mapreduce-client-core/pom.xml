@@ -39,6 +39,20 @@
     <dependency>
       <groupId>edu.umich.gaia</groupId>
       <artifactId>gaia-lib</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-netty</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-protobuf</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-stub</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
