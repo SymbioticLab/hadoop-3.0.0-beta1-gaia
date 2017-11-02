@@ -148,7 +148,8 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
   public void resolve(TaskCompletionEvent event) {
     switch (event.getTaskStatus()) {
     case SUCCEEDED:
-      URI u = getBaseURI(reduceId, event.getTaskTrackerHttp());
+      URI u = getBaseURI(reduceId, "http://localhost:13562");
+      // URI u = getBaseURI(reduceId, event.getTaskTrackerHttp());
       addKnownMapOutput(u.getHost() + ":" + u.getPort(),
           u.toString(),
           event.getTaskAttemptId());
