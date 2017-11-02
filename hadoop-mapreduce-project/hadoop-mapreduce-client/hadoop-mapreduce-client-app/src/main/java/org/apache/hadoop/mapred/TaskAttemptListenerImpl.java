@@ -683,7 +683,7 @@ public class TaskAttemptListenerImpl extends CompositeService
       int numReduceTasks = job.getTotalReduces();
       int numTasks = numMapTasks + numReduceTasks;
 
-      GaiaClient gaiaClient = new GaiaClient("node-1", 50051);
+      GaiaClient gaiaClient = new GaiaClient("manager", 50051);
 
       gaiaClient.greet("ha");
 

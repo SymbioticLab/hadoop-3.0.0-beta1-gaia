@@ -14,27 +14,6 @@
     <orderEntry type="library" scope="TEST" name="Maven: org.hamcrest:hamcrest-core:1.3" level="project" />
     <orderEntry type="module" module-name="hadoop-mapreduce-client-core" scope="PROVIDED" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: edu.umich.gaia:gaia-lib:1.0-SNAPSHOT" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.grpc:grpc-netty:1.6.1" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.grpc:grpc-core:1.6.1" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.grpc:grpc-context:1.6.1" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.errorprone:error_prone_annotations:2.0.19" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.instrumentation:instrumentation-api:0.4.3" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.opencensus:opencensus-api:0.5.1" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-codec-http2:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-codec-http:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-codec:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-handler:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-buffer:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-common:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-handler-proxy:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-transport:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-resolver:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.netty:netty-codec-socks:4.1.14.Final" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.grpc:grpc-protobuf:1.6.1" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.protobuf:protobuf-java-util:3.3.1" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.api.grpc:proto-google-common-protos:0.1.9" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.grpc:grpc-protobuf-lite:1.6.1" level="project" />
-    <orderEntry type="library" scope="PROVIDED" name="Maven: io.grpc:grpc-stub:1.6.1" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.fasterxml.jackson.core:jackson-databind:2.7.8" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.protobuf:protobuf-java:2.5.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.avro:avro:1.7.4" level="project" />
