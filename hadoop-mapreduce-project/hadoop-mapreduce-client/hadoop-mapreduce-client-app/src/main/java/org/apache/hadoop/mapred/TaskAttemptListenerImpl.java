@@ -654,13 +654,9 @@ public class TaskAttemptListenerImpl extends CompositeService
 
       try {
         gaia(taskAttemptIds);
-      } catch (Exception e){
+      } catch (Throwable e){
         LOG.info("GaiaClient Exception");
-        try {
-          gaia(taskAttemptIds);
-        } catch (Exception E) {
-          LOG.info("GaiaClient Exception Again");
-        }
+        e.printStackTrace();
       } finally {
         barrier.set(true);
       }
@@ -668,7 +664,7 @@ public class TaskAttemptListenerImpl extends CompositeService
 
     } // run
 
-    public void gaia(ArrayList<TaskAttemptId> taskAttemptIds) throws Exception {
+    public void gaia(ArrayList<TaskAttemptId> taskAttemptIds) throws Throwable {
       CharSequence user = context.getUser();
 
       Map<JobId, Job> jobs = context.getAllJobs();
@@ -685,55 +681,62 @@ public class TaskAttemptListenerImpl extends CompositeService
 
       GaiaClient gaiaClient = new GaiaClient("manager", 50051);
 
-      gaiaClient.greet("ha");
+      try {
 
-      Map<String, String> mappersIP = new HashMap<>();
-      Map<String, String> reducersIP = new HashMap<>();
+        gaiaClient.greet("ha");
 
-      Map<Integer, TaskAttemptId> reduceAttemptMap = new HashMap<>();
+        Map<String, String> mappersIP = new HashMap<>();
+        Map<String, String> reducersIP = new HashMap<>();
 
-      for (TaskAttemptId attemptId: taskAttemptIds) {
-        Integer taskAttemptId = attemptId.getId();
-        TaskId taskId = attemptId.getTaskId();
-        assert(jobId == taskId.getJobId());
-        assert(job == context.getJob(jobId));
-        Task task = job.getTask(taskId);
-        TaskAttempt attempt = task.getAttempt(attemptId);
+        Map<Integer, TaskAttemptId> reduceAttemptMap = new HashMap<>();
 
-        String nodeHttpAddress = attempt.getNodeHttpAddress();
+        for (TaskAttemptId attemptId : taskAttemptIds) {
+          Integer taskAttemptId = attemptId.getId();
+          TaskId taskId = attemptId.getTaskId();
+          assert (jobId == taskId.getJobId());
+          assert (job == context.getJob(jobId));
+          Task task = job.getTask(taskId);
+          TaskAttempt attempt = task.getAttempt(attemptId);
 
-        TaskType taskType = task.getType();
-        if (taskType == TaskType.MAP) {
-          mappersIP.put(attemptId.toString(), nodeHttpAddress);
-        } else {
-          reducersIP.put(attemptId.toString(), nodeHttpAddress);
+          String nodeHttpAddress = attempt.getNodeHttpAddress();
 
-          reduceAttemptMap.put(taskId.getId(), attemptId);
-        }
-      } // for
+          TaskType taskType = task.getType();
+          if (taskType == TaskType.MAP) {
+            mappersIP.put(attemptId.toString(), nodeHttpAddress);
+          } else {
+            reducersIP.put(attemptId.toString(), nodeHttpAddress);
 
-      Map<String, FlowInfo> flowsMap = new HashMap<>();
-      for (TaskAttemptId mapAttemptId: taskAttemptIds) {
-        if (context.getJob(mapAttemptId.getTaskId().getJobId())
-                .getTask(mapAttemptId.getTaskId())
-                .getType() != TaskType.MAP) {
-          continue;
-        }
-        for (int i = 0; i < numReduceTasks; i += 1) {
-          String mapOutputFilePath = mapOutputFilePathMap.get(mapAttemptId);
-          TaskAttemptId reduceAttemptId = reduceAttemptMap.get(i);
-          FlowInfo flow = new FlowInfo(
-                  mapAttemptId.toString(),
-                  reduceAttemptId.toString(),
-                  mapOutputFilePath,
-                  startOffsetMaps.get(mapAttemptId)[i],
-                  partLengthMaps.get(mapAttemptId)[i]);
-          flowsMap.put(mapOutputFilePath, flow);
-        }
-      } // for
+            reduceAttemptMap.put(taskId.getId(), attemptId);
+          }
+        } // for
 
-      gaiaClient.submitShuffleInfo(user.toString(), jobId.toString(),
-              mappersIP, reducersIP, flowsMap);
+        Map<String, FlowInfo> flowsMap = new HashMap<>();
+        for (TaskAttemptId mapAttemptId : taskAttemptIds) {
+          if (context.getJob(mapAttemptId.getTaskId().getJobId())
+                  .getTask(mapAttemptId.getTaskId())
+                  .getType() != TaskType.MAP) {
+            continue;
+          }
+          for (int i = 0; i < numReduceTasks; i += 1) {
+            String mapOutputFilePath = mapOutputFilePathMap.get(mapAttemptId);
+            TaskAttemptId reduceAttemptId = reduceAttemptMap.get(i);
+            FlowInfo flow = new FlowInfo(
+                    mapAttemptId.toString(),
+                    reduceAttemptId.toString(),
+                    mapOutputFilePath,
+                    startOffsetMaps.get(mapAttemptId)[i],
+                    partLengthMaps.get(mapAttemptId)[i]);
+            flowsMap.put(mapOutputFilePath, flow);
+          }
+        } // for
+
+        gaiaClient.submitShuffleInfo(user.toString(), jobId.toString(),
+                mappersIP, reducersIP, flowsMap);
+
+      } finally {
+        gaiaClient.shutdown();
+      }
+
     }
 
   } // class Runnable
