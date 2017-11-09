@@ -18,6 +18,7 @@
 package org.apache.hadoop.mapreduce.task.reduce;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -40,8 +41,11 @@ class EventFetcher<K,V> extends Thread {
   private final ExceptionReporter exceptionReporter;
   
   private volatile boolean stopped = false;
+
+  private ConcurrentMap<TaskAttemptID, String> mapOutputFileMap;
   
-  public EventFetcher(TaskAttemptID reduce,
+  public EventFetcher(ConcurrentMap<TaskAttemptID, String> mapOutputFileMap,
+          TaskAttemptID reduce,
                       TaskUmbilicalProtocol umbilical,
                       ShuffleScheduler<K,V> scheduler,
                       ExceptionReporter reporter,
@@ -53,6 +57,8 @@ class EventFetcher<K,V> extends Thread {
     this.scheduler = scheduler;
     exceptionReporter = reporter;
     this.maxEventsToFetch = maxEventsToFetch;
+
+    this.mapOutputFileMap = mapOutputFileMap;
   }
 
   @Override
@@ -115,6 +121,7 @@ class EventFetcher<K,V> extends Thread {
     
     int numNewMaps = 0;
     TaskCompletionEvent events[] = null;
+    String mapOutputPaths[] = null;
 
     do {
       MapTaskCompletionEventsUpdate update =
@@ -126,6 +133,7 @@ class EventFetcher<K,V> extends Thread {
       events = update.getMapTaskCompletionEvents();
       LOG.debug("Got " + events.length + " map completion events from " +
                fromEventIdx);
+      mapOutputPaths = update.getMapOutputFilePaths();
 
       assert !update.shouldReset() : "Unexpected legacy state";
 
@@ -138,11 +146,16 @@ class EventFetcher<K,V> extends Thread {
       //    fetching from those maps.
       // 3. Remove TIPFAILED maps from neededOutputs since we don't need their
       //    outputs at all.
+
+      int i = 0;
       for (TaskCompletionEvent event : events) {
         scheduler.resolve(event);
         if (TaskCompletionEvent.Status.SUCCEEDED == event.getTaskStatus()) {
           ++numNewMaps;
+
+          mapOutputFileMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
         }
+        i += 1;
       }
     } while (events.length == maxEventsToFetch);
 

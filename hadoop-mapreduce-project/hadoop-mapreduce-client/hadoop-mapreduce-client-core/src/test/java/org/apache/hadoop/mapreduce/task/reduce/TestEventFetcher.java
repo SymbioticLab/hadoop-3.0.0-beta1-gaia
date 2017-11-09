@@ -98,7 +98,7 @@ public class TestEventFetcher {
       tceList.add(tce);
     }
     TaskCompletionEvent[] events = {};
-    return new MapTaskCompletionEventsUpdate(tceList.toArray(events), false);
+    return new MapTaskCompletionEventsUpdate(tceList.toArray(events), null, false);
   }
 
   private static class EventFetcherForTest<K,V> extends EventFetcher<K,V> {
@@ -106,7 +106,7 @@ public class TestEventFetcher {
     public EventFetcherForTest(TaskAttemptID reduce,
         TaskUmbilicalProtocol umbilical, ShuffleScheduler<K,V> scheduler,
         ExceptionReporter reporter, int maxEventsToFetch) {
-      super(reduce, umbilical, scheduler, reporter, maxEventsToFetch);
+      super(null, reduce, umbilical, scheduler, reporter, maxEventsToFetch);
     }
 
     @Override

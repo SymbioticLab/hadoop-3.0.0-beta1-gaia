@@ -19,6 +19,8 @@
 package org.apache.hadoop.mapred;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import com.sun.tools.corba.se.idl.StringGen;
 import edu.umich.gaialib.GaiaClient;
 import edu.umich.gaialib.TaskInfo;
 import edu.umich.gaialib.FlowInfo;
@@ -360,14 +362,23 @@ public class TaskAttemptListenerImpl extends CompositeService
 
       taskHeartbeatHandler.progressing(attemptID);
 
-      return new MapTaskCompletionEventsUpdate(events, shouldReset);
+      String[] mapOutputFilePaths = new String[events.length];
+      for (int i = 0; i < events.length; i +=1) {
+        TaskAttemptId mapAttemptId = TypeConverter.toYarn(events[i].getTaskAttemptId());
+        mapOutputFilePaths[i] = mapOutputFilePathMap.get(mapAttemptId);
+        if (events[i].getTaskStatus() == TaskCompletionEvent.Status.SUCCEEDED) {
+          assert (mapOutputFilePaths[i] != null);
+        }
+      }
+
+      return new MapTaskCompletionEventsUpdate(events, mapOutputFilePaths, shouldReset);
     } else {
       org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId attemptID =
               TypeConverter.toYarn(taskAttemptID);
 
       taskHeartbeatHandler.progressing(attemptID);
 
-      return new MapTaskCompletionEventsUpdate(new TaskCompletionEvent[0], shouldReset);
+      return new MapTaskCompletionEventsUpdate(new TaskCompletionEvent[0], new String[0], shouldReset);
     }
   }
 

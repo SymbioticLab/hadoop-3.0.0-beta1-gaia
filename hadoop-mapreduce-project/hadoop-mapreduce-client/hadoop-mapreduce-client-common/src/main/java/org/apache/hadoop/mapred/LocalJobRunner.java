@@ -741,7 +741,7 @@ public class LocalJobRunner implements ClientProtocol {
     public MapTaskCompletionEventsUpdate getMapCompletionEvents(JobID jobId, 
         int fromEventId, int maxLocs, TaskAttemptID id) throws IOException {
       return new MapTaskCompletionEventsUpdate(
-        org.apache.hadoop.mapred.TaskCompletionEvent.EMPTY_ARRAY, false);
+        org.apache.hadoop.mapred.TaskCompletionEvent.EMPTY_ARRAY, new String[0], false);
     }
 
     @Override

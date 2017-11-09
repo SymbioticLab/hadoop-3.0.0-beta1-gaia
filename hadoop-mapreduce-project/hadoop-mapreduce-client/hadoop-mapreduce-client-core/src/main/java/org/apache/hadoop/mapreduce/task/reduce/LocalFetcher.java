@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 
 import javax.crypto.SecretKey;
 
@@ -39,6 +40,8 @@ import org.apache.hadoop.mapred.SpillRecord;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.CryptoUtils;
 
+import org.apache.hadoop.fs.Path;
+
 /**
  * LocalFetcher is used by LocalJobRunner to perform a local filesystem
  * fetch.
@@ -50,9 +53,11 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
   private static final MapHost LOCALHOST = new MapHost("local", "local");
 
   private JobConf job;
-  private Map<TaskAttemptID, MapOutputFile> localMapFiles;
+  // private Map<TaskAttemptID, MapOutputFile> localMapFiles;
+  private ConcurrentMap<TaskAttemptID, String> mapOutputFileMap;
 
-  public LocalFetcher(JobConf job, TaskAttemptID reduceId,
+  public LocalFetcher(ConcurrentMap<TaskAttemptID, String> mapOutputFileMap,
+          JobConf job, TaskAttemptID reduceId,
                  ShuffleSchedulerImpl<K, V> scheduler,
                  MergeManager<K,V> merger,
                  Reporter reporter, ShuffleClientMetrics metrics,
@@ -63,12 +68,14 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
         exceptionReporter, shuffleKey);
 
     this.job = job;
-    this.localMapFiles = localMapFiles;
+    // this.localMapFiles = localMapFiles;
 
     setName("localfetcher#" + id);
     setDaemon(true);
-  }
 
+    this.mapOutputFileMap = mapOutputFileMap;
+  }
+/*
   public void run() {
     // Create a worklist of task attempts to work over.
     Set<TaskAttemptID> maps = new HashSet<TaskAttemptID>();
@@ -91,10 +98,27 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
       }
     }
   }
+*/
+  public void run() {
+    while (mapOutputFileMap.size() > 0) {
+      try {
+        // If merge is on, block
+        merger.waitForResource();
+        metrics.threadBusy();
 
+        // Copy as much as is possible.
+        doCopy(mapOutputFileMap);
+        metrics.threadFree();
+      } catch (InterruptedException ie) {
+      } catch (Throwable t) {
+        exceptionReporter.reportException(t);
+      }
+    }
+  }
   /**
    * The crux of the matter...
    */
+  /*
   private void doCopy(Set<TaskAttemptID> maps) throws IOException {
     Iterator<TaskAttemptID> iter = maps.iterator();
     while (iter.hasNext()) {
@@ -110,14 +134,33 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
       }
     }
   }
-
+*/
+  private void doCopy(ConcurrentMap<TaskAttemptID, String> mapOutputFileMap) throws IOException {
+    Iterator<Map.Entry<TaskAttemptID, String>> iter = mapOutputFileMap.entrySet().iterator();
+    while (iter.hasNext()) {
+      Map.Entry<TaskAttemptID, String> entry = iter.next();
+      TaskAttemptID mapAttempID = entry.getKey();
+      LOG.debug("LocalFetcher " + id + " going to fetch: " + mapAttempID);
+      if (copyMapOutput(mapAttempID)) {
+        // Successful copy. Remove this from our worklist.
+        iter.remove();
+      } else {
+        // We got back a WAIT command; go back to the outer loop
+        // and block for InMemoryMerge.
+        break;
+      }
+    }
+  }
   /**
    * Retrieve the map output of a single map task
    * and send it to the merger.
    */
   private boolean copyMapOutput(TaskAttemptID mapTaskId) throws IOException {
     // Figure out where the map task stored its output.
-    Path mapOutputFileName = localMapFiles.get(mapTaskId).getOutputFile();
+    String mapOutputFile = mapOutputFileMap.get(mapTaskId);
+    assert (mapOutputFile != null);
+
+    Path mapOutputFileName = new Path(mapOutputFile);
     Path indexFileName = mapOutputFileName.suffix(".index");
 
     // Read its index to determine the location of our split

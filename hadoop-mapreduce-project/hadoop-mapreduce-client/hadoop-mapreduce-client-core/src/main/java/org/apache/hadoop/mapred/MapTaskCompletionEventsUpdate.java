@@ -21,9 +21,11 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import com.sun.jersey.core.impl.provider.header.WriterUtil;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableUtils;
 
 /**
  * A class that represents the communication between the tasktracker and child
@@ -34,13 +36,16 @@ import org.apache.hadoop.io.Writable;
 @InterfaceStability.Unstable
 public class MapTaskCompletionEventsUpdate implements Writable {
   TaskCompletionEvent[] events;
+  String[] mapOutputFilePaths;
   boolean reset;
 
   public MapTaskCompletionEventsUpdate() { }
 
   public MapTaskCompletionEventsUpdate(TaskCompletionEvent[] events,
+      String[] mapOutputFilePaths,
       boolean reset) {
     this.events = events;
+    this.mapOutputFilePaths = mapOutputFilePaths;
     this.reset = reset;
   }
 
@@ -52,11 +57,20 @@ public class MapTaskCompletionEventsUpdate implements Writable {
     return events;
   }
 
+  public String[] getMapOutputFilePaths() {
+    return mapOutputFilePaths;
+  }
+
   public void write(DataOutput out) throws IOException {
     out.writeBoolean(reset);
     out.writeInt(events.length);
     for (TaskCompletionEvent event : events) {
       event.write(out);
+    }
+
+    out.write(mapOutputFilePaths.length);
+    for (String mapOutputFilePath: mapOutputFilePaths) {
+      WritableUtils.writeString(out, mapOutputFilePath);
     }
   }
 
@@ -66,6 +80,11 @@ public class MapTaskCompletionEventsUpdate implements Writable {
     for (int i = 0; i < events.length; ++i) {
       events[i] = new TaskCompletionEvent();
       events[i].readFields(in);
+    }
+
+    mapOutputFilePaths = new String[in.readInt()];
+    for (int i = 0; i < mapOutputFilePaths.length; i += 1) {
+      mapOutputFilePaths[i] = WritableUtils.readString(in);
     }
   }
 }
