@@ -100,6 +100,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
   }
 */
   public void run() {
+    // TODO:XXX
     while (mapOutputFileMap.size() > 0) {
       try {
         // If merge is on, block
