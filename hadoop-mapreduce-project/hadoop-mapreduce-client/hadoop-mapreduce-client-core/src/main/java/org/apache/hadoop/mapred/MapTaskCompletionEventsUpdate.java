@@ -68,7 +68,7 @@ public class MapTaskCompletionEventsUpdate implements Writable {
       event.write(out);
     }
 
-    out.write(mapOutputFilePaths.length);
+    out.writeInt(mapOutputFilePaths.length);
     for (String mapOutputFilePath: mapOutputFilePaths) {
       WritableUtils.writeString(out, mapOutputFilePath);
     }
