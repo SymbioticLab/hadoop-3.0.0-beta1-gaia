@@ -106,7 +106,7 @@ public class TestEventFetcher {
     public EventFetcherForTest(TaskAttemptID reduce,
         TaskUmbilicalProtocol umbilical, ShuffleScheduler<K,V> scheduler,
         ExceptionReporter reporter, int maxEventsToFetch) {
-      super(null, reduce, umbilical, scheduler, reporter, maxEventsToFetch);
+      super(null, null, null, reduce, umbilical, scheduler, reporter, maxEventsToFetch);
     }
 
     @Override
