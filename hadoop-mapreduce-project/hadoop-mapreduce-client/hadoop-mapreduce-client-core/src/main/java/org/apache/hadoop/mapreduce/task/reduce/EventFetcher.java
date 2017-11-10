@@ -19,9 +19,11 @@ package org.apache.hadoop.mapreduce.task.reduce;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MapTaskCompletionEventsUpdate;
 import org.apache.hadoop.mapred.TaskCompletionEvent;
 import org.apache.hadoop.mapred.TaskUmbilicalProtocol;
@@ -43,8 +45,11 @@ class EventFetcher<K,V> extends Thread {
   private volatile boolean stopped = false;
 
   private ConcurrentMap<TaskAttemptID, String> mapOutputFileMap;
-  
+  private LinkedBlockingQueue<Boolean> barrier;
+  private JobConf job;
+
   public EventFetcher(ConcurrentMap<TaskAttemptID, String> mapOutputFileMap,
+                      LinkedBlockingQueue<Boolean> barrier, JobConf job,
           TaskAttemptID reduce,
                       TaskUmbilicalProtocol umbilical,
                       ShuffleScheduler<K,V> scheduler,
@@ -59,6 +64,8 @@ class EventFetcher<K,V> extends Thread {
     this.maxEventsToFetch = maxEventsToFetch;
 
     this.mapOutputFileMap = mapOutputFileMap;
+    this.barrier = barrier;
+    this.job = job;
   }
 
   @Override
@@ -154,6 +161,9 @@ class EventFetcher<K,V> extends Thread {
           ++numNewMaps;
 
           mapOutputFileMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
+          if (mapOutputFileMap.size() == job.getNumMapTasks()) {
+            barrier.put(true);
+          }
         }
         i += 1;
       }

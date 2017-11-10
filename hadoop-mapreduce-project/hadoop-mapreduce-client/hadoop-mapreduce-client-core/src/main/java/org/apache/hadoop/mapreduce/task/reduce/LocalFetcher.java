@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.crypto.SecretKey;
 
@@ -55,15 +56,17 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
   private JobConf job;
   // private Map<TaskAttemptID, MapOutputFile> localMapFiles;
   private ConcurrentMap<TaskAttemptID, String> mapOutputFileMap;
+  private LinkedBlockingQueue<Boolean> barrier;
 
   public LocalFetcher(ConcurrentMap<TaskAttemptID, String> mapOutputFileMap,
-          JobConf job, TaskAttemptID reduceId,
-                 ShuffleSchedulerImpl<K, V> scheduler,
-                 MergeManager<K,V> merger,
-                 Reporter reporter, ShuffleClientMetrics metrics,
-                 ExceptionReporter exceptionReporter,
-                 SecretKey shuffleKey,
-                 Map<TaskAttemptID, MapOutputFile> localMapFiles) {
+                      LinkedBlockingQueue<Boolean> barrier,
+                      JobConf job, TaskAttemptID reduceId,
+                      ShuffleSchedulerImpl<K, V> scheduler,
+                      MergeManager<K,V> merger,
+                      Reporter reporter, ShuffleClientMetrics metrics,
+                      ExceptionReporter exceptionReporter,
+                      SecretKey shuffleKey,
+                      Map<TaskAttemptID, MapOutputFile> localMapFiles) {
     super(job, reduceId, scheduler, merger, reporter, metrics,
         exceptionReporter, shuffleKey);
 
@@ -74,6 +77,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
     setDaemon(true);
 
     this.mapOutputFileMap = mapOutputFileMap;
+    this.barrier = barrier;
   }
 /*
   public void run() {
@@ -100,7 +104,11 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
   }
 */
   public void run() {
-    while (mapOutputFileMap.size() < job.getNumMapTasks()) {}
+    try {
+      barrier.take();
+    } catch (Throwable t) {
+      exceptionReporter.reportException(t);
+    }
     // TODO:XXX
     while (mapOutputFileMap.size() > 0) {
       try {

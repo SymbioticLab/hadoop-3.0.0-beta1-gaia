@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -61,6 +62,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
   private TaskStatus taskStatus;
   private Task reduceTask; //Used for status updates
   private Map<TaskAttemptID, MapOutputFile> localMapFiles;
+  private LinkedBlockingQueue<Boolean> barrier = new LinkedBlockingQueue<>(1);
 
   public ConcurrentMap<TaskAttemptID, String> mapOutputFileMap = new ConcurrentHashMap<>();
 
@@ -106,7 +108,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
 
     // Start the map-completion events fetcher thread
     final EventFetcher<K,V> eventFetcher = 
-      new EventFetcher<K,V>(mapOutputFileMap,
+      new EventFetcher<K,V>(mapOutputFileMap, barrier, jobConf,
               reduceId, umbilical, scheduler, this,
           maxEventsToFetch);
     eventFetcher.start();
@@ -118,7 +120,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
       jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
     Fetcher<K,V>[] fetchers = new Fetcher[numFetchers];
     if (isLocal) {
-      fetchers[0] = new LocalFetcher<K, V>(mapOutputFileMap,
+      fetchers[0] = new LocalFetcher<K, V>(mapOutputFileMap, barrier,
               jobConf, reduceId, scheduler,
           merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
           localMapFiles);
