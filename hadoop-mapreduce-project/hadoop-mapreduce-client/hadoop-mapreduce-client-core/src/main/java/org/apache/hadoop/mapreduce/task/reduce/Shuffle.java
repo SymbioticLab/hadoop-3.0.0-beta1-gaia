@@ -20,6 +20,7 @@ package org.apache.hadoop.mapreduce.task.reduce;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -120,14 +121,25 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
       jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
     Fetcher<K,V>[] fetchers = new Fetcher[numFetchers];
     if (isLocal) {
+      /*
       fetchers[0] = new LocalFetcher<K, V>(mapOutputFileMap, barrier,
               jobConf, reduceId, scheduler,
           merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
           localMapFiles);
       fetchers[0].start();
+      */
+      barrier.take();
+      for (Entry<TaskAttemptID, String> entry: mapOutputFileMap.entrySet()) {
+        int i = entry.getKey().getTaskID().getId();
+        fetchers[i] = new LocalFetcher<K, V>(entry.getKey(), entry.getValue(),
+                jobConf, reduceId, scheduler,
+                merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
+                localMapFiles);
+        fetchers[i].start();
+      }
     } else {
       for (int i=0; i < numFetchers; ++i) {
-        fetchers[i] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger, 
+        fetchers[i] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger,
                                        reporter, metrics, this, 
                                        reduceTask.getShuffleSecret());
         fetchers[i].start();

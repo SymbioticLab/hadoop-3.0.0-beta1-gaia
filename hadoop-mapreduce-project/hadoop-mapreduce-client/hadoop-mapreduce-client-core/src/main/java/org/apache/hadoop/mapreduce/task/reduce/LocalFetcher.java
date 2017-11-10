@@ -55,11 +55,10 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
   private JobConf job;
   // private Map<TaskAttemptID, MapOutputFile> localMapFiles;
-  private ConcurrentMap<TaskAttemptID, String> mapOutputFileMap;
-  private LinkedBlockingQueue<Boolean> barrier;
+  private TaskAttemptID mapAttemptID;
+  private String mapOutputFile;
 
-  public LocalFetcher(ConcurrentMap<TaskAttemptID, String> mapOutputFileMap,
-                      LinkedBlockingQueue<Boolean> barrier,
+  public LocalFetcher(TaskAttemptID mapAttempID, String mapOutputFile,
                       JobConf job, TaskAttemptID reduceId,
                       ShuffleSchedulerImpl<K, V> scheduler,
                       MergeManager<K,V> merger,
@@ -76,16 +75,14 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
     setName("localfetcher#" + id);
     setDaemon(true);
 
-    this.mapOutputFileMap = mapOutputFileMap;
-    this.barrier = barrier;
+    this.mapAttemptID = mapAttempID;
+    this.mapOutputFile = mapOutputFile;
   }
-/*
+
   public void run() {
     // Create a worklist of task attempts to work over.
     Set<TaskAttemptID> maps = new HashSet<TaskAttemptID>();
-    for (TaskAttemptID map : localMapFiles.keySet()) {
-      maps.add(map);
-    }
+    maps.add(mapAttemptID);
 
     while (maps.size() > 0) {
       try {
@@ -102,33 +99,10 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
       }
     }
   }
-*/
-  public void run() {
-    try {
-      barrier.take();
-    } catch (Throwable t) {
-      exceptionReporter.reportException(t);
-    }
-    // TODO:XXX
-    while (mapOutputFileMap.size() > 0) {
-      try {
-        // If merge is on, block
-        merger.waitForResource();
-        metrics.threadBusy();
 
-        // Copy as much as is possible.
-        doCopy(mapOutputFileMap);
-        metrics.threadFree();
-      } catch (InterruptedException ie) {
-      } catch (Throwable t) {
-        exceptionReporter.reportException(t);
-      }
-    }
-  }
   /**
    * The crux of the matter...
    */
-  /*
   private void doCopy(Set<TaskAttemptID> maps) throws IOException {
     Iterator<TaskAttemptID> iter = maps.iterator();
     while (iter.hasNext()) {
@@ -144,30 +118,13 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
       }
     }
   }
-*/
-  private void doCopy(ConcurrentMap<TaskAttemptID, String> mapOutputFileMap) throws IOException {
-    Iterator<Map.Entry<TaskAttemptID, String>> iter = mapOutputFileMap.entrySet().iterator();
-    while (iter.hasNext()) {
-      Map.Entry<TaskAttemptID, String> entry = iter.next();
-      TaskAttemptID mapAttempID = entry.getKey();
-      LOG.debug("LocalFetcher " + id + " going to fetch: " + mapAttempID);
-      if (copyMapOutput(mapAttempID)) {
-        // Successful copy. Remove this from our worklist.
-        iter.remove();
-      } else {
-        // We got back a WAIT command; go back to the outer loop
-        // and block for InMemoryMerge.
-        break;
-      }
-    }
-  }
+
   /**
    * Retrieve the map output of a single map task
    * and send it to the merger.
    */
   private boolean copyMapOutput(TaskAttemptID mapTaskId) throws IOException {
     // Figure out where the map task stored its output.
-    String mapOutputFile = mapOutputFileMap.get(mapTaskId);
     assert (mapOutputFile != null);
 
     Path mapOutputFileName = new Path(mapOutputFile);
