@@ -117,9 +117,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
     // Start the map-output fetcher threads
     boolean isLocal = true;
     // boolean isLocal = localMapFiles != null;
-    final int numFetchers = isLocal ? 1 :
-      jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
-    Fetcher<K,V>[] fetchers = new Fetcher[numFetchers];
+    Fetcher<K,V>[] fetchers;
     if (isLocal) {
       /*
       fetchers[0] = new LocalFetcher<K, V>(mapOutputFileMap, barrier,
@@ -129,6 +127,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
       fetchers[0].start();
       */
       barrier.take();
+      fetchers = new Fetcher[jobConf.getNumMapTasks()];
       for (Entry<TaskAttemptID, String> entry: mapOutputFileMap.entrySet()) {
         int i = entry.getKey().getTaskID().getId();
         fetchers[i] = new LocalFetcher<K, V>(entry.getKey(), entry.getValue(),
@@ -138,6 +137,8 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
         fetchers[i].start();
       }
     } else {
+      final int numFetchers = jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
+      fetchers = new Fetcher[numFetchers];
       for (int i=0; i < numFetchers; ++i) {
         fetchers[i] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger,
                                        reporter, metrics, this, 
