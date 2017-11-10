@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.mapreduce.task.reduce;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -132,7 +133,12 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     // Read its index to determine the location of our split
     // and its size.
-    SpillRecord sr = new SpillRecord(indexFileName, job);
+    SpillRecord sr;
+    try {
+      sr = new SpillRecord(indexFileName, job);
+    } catch (FileNotFoundException e) {
+      return false;
+    }
     IndexRecord ir = sr.getIndex(reduce);
 
     long compressedLength = ir.partLength;
