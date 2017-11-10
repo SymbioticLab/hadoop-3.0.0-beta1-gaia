@@ -100,6 +100,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
   }
 */
   public void run() {
+    while (mapOutputFileMap.size() < job.getNumMapTasks()) {}
     // TODO:XXX
     while (mapOutputFileMap.size() > 0) {
       try {
