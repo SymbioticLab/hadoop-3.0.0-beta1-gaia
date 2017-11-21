@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.mapreduce.task.reduce;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashSet;
@@ -58,6 +59,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
   // private Map<TaskAttemptID, MapOutputFile> localMapFiles;
   private TaskAttemptID mapAttemptID;
   private String mapOutputFile;
+  private TaskAttemptID reduceAttemptID;
 
   public LocalFetcher(TaskAttemptID mapAttempID, String mapOutputFile,
                       JobConf job, TaskAttemptID reduceId,
@@ -78,6 +80,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     this.mapAttemptID = mapAttempID;
     this.mapOutputFile = mapOutputFile;
+    this.reduceAttemptID = reduceId;
   }
 
   public void run() {
@@ -128,11 +131,25 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
     // Figure out where the map task stored its output.
     assert (mapOutputFile != null);
 
-    Path mapOutputFileName = new Path(mapOutputFile);
-    Path indexFileName = mapOutputFileName.suffix(".index");
+    // Path mapOutputFileName = new Path(mapOutputFile);
+    // Path indexFileName = mapOutputFileName.suffix(".index");
+
+    int pos_dot = mapOutputFile.lastIndexOf('.');
+    if (pos_dot == -1) {
+      LOG.info("filename wrong ??? " + mapOutputFile);
+    }
+
+    String str_file = mapOutputFile.substring(0, pos_dot);
+    String str_dot_out = mapOutputFile.substring(pos_dot);
+
+    Path newMapOutputFileName = new Path(str_file +
+            reduceAttemptID.toString() + str_dot_out);
 
     // Read its index to determine the location of our split
     // and its size.
+
+    /*
+
     SpillRecord sr;
     try {
       sr = new SpillRecord(indexFileName, job);
@@ -143,6 +160,12 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     long compressedLength = ir.partLength;
     long decompressedLength = ir.rawLength;
+
+    */
+
+    File f = new File(newMapOutputFileName.toString());
+    long compressedLength = f.length();
+    long decompressedLength = f.length();
 
     compressedLength -= CryptoUtils.cryptoPadding(job);
     decompressedLength -= CryptoUtils.cryptoPadding(job);
@@ -165,10 +188,11 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     // now read the file, seek to the appropriate section, and send it.
     FileSystem localFs = FileSystem.getLocal(job).getRaw();
-    FSDataInputStream inStream = localFs.open(mapOutputFileName);
+    FSDataInputStream inStream = localFs.open(newMapOutputFileName);
+
     try {
       inStream = CryptoUtils.wrapIfNecessary(job, inStream);
-      inStream.seek(ir.startOffset + CryptoUtils.cryptoPadding(job));
+      inStream.seek(0 + CryptoUtils.cryptoPadding(job));
       mapOutput.shuffle(LOCALHOST, inStream, compressedLength,
           decompressedLength, metrics, reporter);
     } finally {
