@@ -444,9 +444,14 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
     Iterator<MapHost> iter = pendingHosts.iterator();
     // Safe to take one because we know pendingHosts isn't empty
     MapHost host = iter.next();
-    int numToPick = random.nextInt(pendingHosts.size());
-    for (int i = 0; i < numToPick; ++i) {
-      host = iter.next();
+
+    while (host.getHostName() == "local") {
+
+      int numToPick = random.nextInt(pendingHosts.size());
+      for (int i = 0; i < numToPick; ++i) {
+        host = iter.next();
+      }
+
     }
 
     pendingHosts.remove(host);

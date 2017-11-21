@@ -18,11 +18,13 @@
 package org.apache.hadoop.mapreduce.task.reduce;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MapTaskCompletionEventsUpdate;
 import org.apache.hadoop.mapred.TaskCompletionEvent;
@@ -130,6 +132,8 @@ class EventFetcher<K,V> extends Thread {
     TaskCompletionEvent events[] = null;
     String mapOutputPaths[] = null;
 
+    ConcurrentMap<TaskAttemptID, String> tempMap = new ConcurrentHashMap<>();
+
     do {
       MapTaskCompletionEventsUpdate update =
           umbilical.getMapCompletionEvents(
@@ -160,8 +164,20 @@ class EventFetcher<K,V> extends Thread {
         if (TaskCompletionEvent.Status.SUCCEEDED == event.getTaskStatus()) {
           ++numNewMaps;
 
-          mapOutputFileMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
-          if (mapOutputFileMap.size() == job.getNumMapTasks()) {
+          Boolean diffRack = true;
+          LOG.info("@@@@ tasktrackerhttp " + event.getTaskTrackerHttp());
+          LOG.info("@@@@ filesystem uri" + FileSystem.getLocal(job).getRaw().getUri().toString());
+          if (event.getTaskTrackerHttp() ==
+                  FileSystem.getLocal(job).getRaw().getUri().toString()) {
+            diffRack = false;
+          }
+
+          if (diffRack) {
+            mapOutputFileMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
+          }
+          tempMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
+
+          if (tempMap.size() == job.getNumMapTasks()) {
             barrier.put(true);
           }
         }

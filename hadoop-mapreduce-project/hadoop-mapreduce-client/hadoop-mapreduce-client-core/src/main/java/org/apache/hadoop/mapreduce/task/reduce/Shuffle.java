@@ -117,17 +117,13 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
     // Start the map-output fetcher threads
     boolean isLocal = true;
     // boolean isLocal = localMapFiles != null;
-    Fetcher<K,V>[] fetchers;
-    if (isLocal) {
-      /*
-      fetchers[0] = new LocalFetcher<K, V>(mapOutputFileMap, barrier,
-              jobConf, reduceId, scheduler,
-          merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
-          localMapFiles);
-      fetchers[0].start();
-      */
+
+    final int numFetchers = jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
+    Fetcher<K,V>[] fetchers = new Fetcher[mapOutputFileMap.size() + numFetchers];
+
       barrier.take();
-      fetchers = new Fetcher[jobConf.getNumMapTasks()];
+
+    // diff rack
       for (Entry<TaskAttemptID, String> entry: mapOutputFileMap.entrySet()) {
         int i = entry.getKey().getTaskID().getId();
         fetchers[i] = new LocalFetcher<K, V>(entry.getKey(), entry.getValue(),
@@ -136,17 +132,16 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
                 localMapFiles);
         fetchers[i].start();
       }
-    } else {
-      final int numFetchers = jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
-      fetchers = new Fetcher[numFetchers];
-      for (int i=0; i < numFetchers; ++i) {
+
+    // same rack
+      for (int i=mapOutputFileMap.size(); i < fetchers.length; ++i) {
         fetchers[i] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger,
                                        reporter, metrics, this, 
                                        reduceTask.getShuffleSecret());
         fetchers[i].start();
       }
-    }
-    
+
+
     // Wait for shuffle to complete successfully
     while (!scheduler.waitUntilDone(PROGRESS_FREQUENCY)) {
       reporter.progress();

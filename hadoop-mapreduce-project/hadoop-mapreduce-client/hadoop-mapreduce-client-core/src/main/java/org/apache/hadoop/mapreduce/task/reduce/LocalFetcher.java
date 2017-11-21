@@ -188,6 +188,9 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     // now read the file, seek to the appropriate section, and send it.
     FileSystem localFs = FileSystem.getLocal(job).getRaw();
+
+    LOG.info("***localFS Uri*** " + localFs.getUri());
+
     FSDataInputStream inStream = localFs.open(newMapOutputFileName);
 
     try {
