@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.mapred;
 
+import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.sun.tools.corba.se.idl.StringGen;
@@ -691,11 +692,13 @@ public class TaskAttemptListenerImpl extends CompositeService
       int numReduceTasks = job.getTotalReduces();
       int numTasks = numMapTasks + numReduceTasks;
 
-      GaiaClient gaiaClient = new GaiaClient("manager", 50051);
+      // GaiaClient gaiaClient = new GaiaClient("manager", 50051);
+
+      GaiaClient gaiaClient = new GaiaClient("dc1master", 50051);
 
       try {
 
-        gaiaClient.greet("ha");
+        // gaiaClient.greet("ha");
 
         Map<String, String> mappersIP = new HashMap<>();
         Map<String, String> reducersIP = new HashMap<>();
@@ -732,6 +735,10 @@ public class TaskAttemptListenerImpl extends CompositeService
           for (int i = 0; i < numReduceTasks; i += 1) {
             String mapOutputFilePath = mapOutputFilePathMap.get(mapAttemptId);
             TaskAttemptId reduceAttemptId = reduceAttemptMap.get(i);
+            if (sameRack(mappersIP.get(mapAttemptId.toString()),
+                    reducersIP.get(reduceAttemptId.toString()))) {
+              continue;
+            }
             FlowInfo flow = new FlowInfo(
                     mapAttemptId.toString(),
                     reduceAttemptId.toString(),
@@ -749,6 +756,39 @@ public class TaskAttemptListenerImpl extends CompositeService
         gaiaClient.shutdown();
       }
 
+    }
+
+    boolean sameRack(String mapHttp, String reduceHttp) {
+      // http://localhost:13562
+      String host_map = mapHttp.substring("http://".length(), mapHttp.lastIndexOf(':'));
+
+      String addr_map = new String();
+      try {
+        addr_map = InetAddress.getByName(host_map).getHostAddress();
+      } catch (IOException e) {
+        System.err.println("unkown map host");
+      }
+
+      // http://localhost:13562
+      String host_reduce = reduceHttp.substring("http://".length(), reduceHttp.lastIndexOf(':'));
+
+      String addr_reduce = new String();
+      try {
+        addr_reduce = InetAddress.getByName(host_reduce).getHostAddress();
+      } catch (IOException e) {
+        System.err.println("unkown reduce host");
+      }
+
+      try {
+        if (addr_map.substring(0, addr_map.lastIndexOf('.')) ==
+                addr_reduce.substring(0, addr_reduce.lastIndexOf('.'))) {
+          return true;
+        }
+      } catch (Exception e) {
+        LOG.info(e.getMessage());
+      }
+
+      return false;
     }
 
   } // class Runnable

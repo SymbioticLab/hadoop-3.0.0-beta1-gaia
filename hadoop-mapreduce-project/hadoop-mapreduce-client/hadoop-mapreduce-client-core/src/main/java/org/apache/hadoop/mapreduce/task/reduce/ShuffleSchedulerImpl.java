@@ -51,6 +51,7 @@ import org.apache.hadoop.mapreduce.TaskID;
 import org.apache.hadoop.mapreduce.task.reduce.MapHost.State;
 import org.apache.hadoop.util.Progress;
 import org.apache.hadoop.util.Time;
+import org.omg.IOP.IOR;
 
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
@@ -148,8 +149,9 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
   public void resolve(TaskCompletionEvent event) {
     switch (event.getTaskStatus()) {
     case SUCCEEDED:
-      URI u = getBaseURI(reduceId, "http://localhost:13562");
-      // URI u = getBaseURI(reduceId, event.getTaskTrackerHttp());
+      // URI u = getBaseURI(reduceId, "http://localhost:13562");
+      URI u = getBaseURI(reduceId, event.getTaskTrackerHttp());
+
       addKnownMapOutput(u.getHost() + ":" + u.getPort(),
           u.toString(),
           event.getTaskAttemptId());

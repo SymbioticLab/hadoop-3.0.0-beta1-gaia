@@ -18,6 +18,7 @@
 package org.apache.hadoop.mapreduce.task.reduce;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -165,11 +166,27 @@ class EventFetcher<K,V> extends Thread {
           ++numNewMaps;
 
           Boolean diffRack = true;
-          LOG.info("@@@@ tasktrackerhttp " + event.getTaskTrackerHttp());
-          LOG.info("@@@@ filesystem uri" + FileSystem.getLocal(job).getRaw().getUri().toString());
-          if (event.getTaskTrackerHttp() ==
-                  FileSystem.getLocal(job).getRaw().getUri().toString()) {
-            diffRack = false;
+
+          String str_map = event.getTaskTrackerHttp();
+          // http://localhost:13562
+          String host_map = str_map.substring("http://".length(), str_map.lastIndexOf(':'));
+
+          String addr_map = new String();
+          try {
+            addr_map = InetAddress.getByName(host_map).getHostAddress();
+          } catch (IOException e) {
+            System.err.println("unkown host");
+          }
+
+          String addr_reduce = InetAddress.getLocalHost().getHostAddress();
+
+          try {
+            if (addr_map.substring(0, addr_map.lastIndexOf('.')) ==
+                    addr_reduce.substring(0, addr_reduce.lastIndexOf('.'))) {
+              diffRack = false;
+            }
+          } catch (Exception e) {
+            LOG.info(e.getMessage());
           }
 
           if (diffRack) {
