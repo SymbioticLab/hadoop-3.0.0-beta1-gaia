@@ -142,7 +142,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
     String str_file = mapOutputFile.substring(0, pos_dot);
     String str_dot_out = mapOutputFile.substring(pos_dot);
 
-    Path newMapOutputFileName = new Path(str_file +
+    Path newMapOutputFileName = new Path(str_file + "_" +
             reduceAttemptID.toString() + str_dot_out);
 
     // Read its index to determine the location of our split
