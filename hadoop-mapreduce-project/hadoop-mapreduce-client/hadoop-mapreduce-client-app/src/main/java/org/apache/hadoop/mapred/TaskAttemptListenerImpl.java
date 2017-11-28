@@ -18,7 +18,7 @@
 
 package org.apache.hadoop.mapred;
 
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -26,7 +26,7 @@ import com.sun.tools.corba.se.idl.StringGen;
 import edu.umich.gaialib.GaiaClient;
 import edu.umich.gaialib.TaskInfo;
 import edu.umich.gaialib.FlowInfo;
-import java.io.IOException;
+
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -794,8 +794,24 @@ public class TaskAttemptListenerImpl extends CompositeService
     String rack = new String();
     try {
       Process p = new ProcessBuilder("bash", "/etc/hadoop/conf/topo.sh", addr).start();
-      rack = p.getOutputStream().toString();
+      int exit_code = p.waitFor();
+      if (exit_code != 0) {
+        System.out.println("abnormal exit");
+      }
+
+      InputStream in = p.getInputStream();
+
+      BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+      StringBuilder out = new StringBuilder();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        out.append(line);
+      }
+      reader.close();
+
+      rack = out.toString();
     } catch (Exception e) {
+      e.printStackTrace();
       System.out.println("readTopo exception");
     }
     System.out.println(addr + "::" + rack);
