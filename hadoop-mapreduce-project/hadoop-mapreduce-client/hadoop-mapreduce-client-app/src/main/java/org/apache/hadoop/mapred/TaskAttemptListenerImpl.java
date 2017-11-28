@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.mapred;
 
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -72,7 +73,6 @@ import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.service.CompositeService;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
-import sun.nio.cs.CharsetMapping;
 
 /**
  * This class is responsible for talking to the task umblical.
@@ -759,8 +759,8 @@ public class TaskAttemptListenerImpl extends CompositeService
     }
 
     boolean sameRack(String mapHttp, String reduceHttp) {
-      // http://localhost:13562
-      String host_map = mapHttp.substring("http://".length(), mapHttp.lastIndexOf(':'));
+      // clnode088.clemson.cloudlab.us:8042
+      String host_map = mapHttp.substring(0, mapHttp.lastIndexOf(':'));
 
       String addr_map = new String();
       try {
@@ -769,8 +769,8 @@ public class TaskAttemptListenerImpl extends CompositeService
         System.err.println("unkown map host");
       }
 
-      // http://localhost:13562
-      String host_reduce = reduceHttp.substring("http://".length(), reduceHttp.lastIndexOf(':'));
+      // clnode088.clemson.cloudlab.us:8042
+      String host_reduce = reduceHttp.substring(0, reduceHttp.lastIndexOf(':'));
 
       String addr_reduce = new String();
       try {
@@ -780,8 +780,7 @@ public class TaskAttemptListenerImpl extends CompositeService
       }
 
       try {
-        if (addr_map.substring(0, addr_map.lastIndexOf('.')) ==
-                addr_reduce.substring(0, addr_reduce.lastIndexOf('.'))) {
+        if (readTopo(addr_map) == readTopo(addr_reduce)) {
           return true;
         }
       } catch (Exception e) {
@@ -792,5 +791,16 @@ public class TaskAttemptListenerImpl extends CompositeService
     }
 
   } // class Runnable
+
+  String readTopo(String addr) {
+    String rack = new String();
+    try {
+      Process p = new ProcessBuilder("bash", "/etc/hadoop/conf/topo.sh", addr).start();
+      rack = p.getOutputStream().toString();
+    } catch (Exception e) {
+      System.out.println("readTopo exception");
+    }
+    return rack;
+  }
 
 }
