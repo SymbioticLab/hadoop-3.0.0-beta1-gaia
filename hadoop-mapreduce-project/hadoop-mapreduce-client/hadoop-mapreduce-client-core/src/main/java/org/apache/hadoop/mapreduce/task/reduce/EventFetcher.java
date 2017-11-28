@@ -17,7 +17,10 @@
  */
 package org.apache.hadoop.mapreduce.task.reduce;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -165,8 +168,6 @@ class EventFetcher<K,V> extends Thread {
         if (TaskCompletionEvent.Status.SUCCEEDED == event.getTaskStatus()) {
           ++numNewMaps;
 
-          Boolean diffRack = true;
-
           String str_map = event.getTaskTrackerHttp();
           // http://localhost:13562
           String host_map = str_map.substring("http://".length(), str_map.lastIndexOf(':'));
@@ -180,16 +181,7 @@ class EventFetcher<K,V> extends Thread {
 
           String addr_reduce = InetAddress.getLocalHost().getHostAddress();
 
-          try {
-            if (addr_map.substring(0, addr_map.lastIndexOf('.')) ==
-                    addr_reduce.substring(0, addr_reduce.lastIndexOf('.'))) {
-              diffRack = false;
-            }
-          } catch (Exception e) {
-            LOG.info(e.getMessage());
-          }
-
-          if (diffRack) {
+          if (!readTopo(addr_map).equals(readTopo(addr_reduce))) {
             mapOutputFileMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
           }
           tempMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
@@ -203,6 +195,34 @@ class EventFetcher<K,V> extends Thread {
     } while (events.length == maxEventsToFetch);
 
     return numNewMaps;
+  }
+
+  String readTopo(String addr) {
+    String rack = new String();
+    try {
+      Process p = new ProcessBuilder("bash", "/etc/hadoop/conf/topo.sh", addr).start();
+      int exit_code = p.waitFor();
+      if (exit_code != 0) {
+        System.out.println("abnormal exit");
+      }
+
+      InputStream in = p.getInputStream();
+
+      BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+      StringBuilder out = new StringBuilder();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        out.append(line);
+      }
+      reader.close();
+
+      rack = out.toString();
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println("readTopo exception");
+    }
+    System.out.println(addr + "::" + rack);
+    return rack;
   }
 
 }

@@ -782,10 +782,7 @@ public class TaskAttemptListenerImpl extends CompositeService
         System.err.println("unkown reduce host");
       }
 
-      if (readTopo(addr_map) == readTopo(addr_reduce)) {
-        return true;
-      }
-      return false;
+      return readTopo(addr_map).equals(readTopo(addr_reduce));
     }
 
   } // class Runnable
