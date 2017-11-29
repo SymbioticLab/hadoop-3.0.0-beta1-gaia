@@ -119,10 +119,17 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
     boolean isLocal = true;
     // boolean isLocal = localMapFiles != null;
 
+    System.out.println("mapoutputfilemap.size old" + mapOutputFileMap.size());
+
+    barrier.take();
+
+    System.out.println("mapoutputfilemap.size new" + mapOutputFileMap.size());
+
+
     final int numFetchers = jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
     Fetcher<K,V>[] fetchers = new Fetcher[mapOutputFileMap.size() + numFetchers];
 
-      barrier.take();
+    System.out.println("mapoutputfilemap.size "+ mapOutputFileMap.size() + "numFetchers*" + numFetchers);
 
     // diff rack
       for (Entry<TaskAttemptID, String> entry: mapOutputFileMap.entrySet()) {
@@ -131,6 +138,8 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
                 jobConf, reduceId, scheduler,
                 merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
                 localMapFiles);
+
+        System.out.println("diff rack localfetcher start: " + i);
         fetchers[i].start();
       }
 
@@ -139,6 +148,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
         fetchers[i] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger,
                                        reporter, metrics, this, 
                                        reduceTask.getShuffleSecret());
+        System.out.println("same rack fetcher start: " + i);
         fetchers[i].start();
       }
 
