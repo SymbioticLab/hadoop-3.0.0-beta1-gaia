@@ -181,11 +181,12 @@ class EventFetcher<K,V> extends Thread {
 
           String addr_reduce = InetAddress.getLocalHost().getHostAddress();
 
+          // if no same rack, need localfetcher
           if (!readTopo(addr_map).equals(readTopo(addr_reduce))) {
             mapOutputFileMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
           }
-          tempMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
 
+          tempMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
           if (tempMap.size() == job.getNumMapTasks()) {
             barrier.put(true);
           }

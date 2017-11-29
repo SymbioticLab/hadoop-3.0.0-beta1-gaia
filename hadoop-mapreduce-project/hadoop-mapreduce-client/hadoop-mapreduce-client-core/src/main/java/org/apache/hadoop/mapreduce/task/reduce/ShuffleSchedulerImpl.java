@@ -17,7 +17,10 @@
  */
 package org.apache.hadoop.mapreduce.task.reduce;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -151,7 +154,6 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
     case SUCCEEDED:
       // URI u = getBaseURI(reduceId, "http://localhost:13562");
       URI u = getBaseURI(reduceId, event.getTaskTrackerHttp());
-
       addKnownMapOutput(u.getHost() + ":" + u.getPort(),
           u.toString(),
           event.getTaskAttemptId());
@@ -420,12 +422,64 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
     }
     host.addKnownMap(mapId);
 
+    // if not same rack, do not need to add to pending for fetcher to take
+    // localfetcher already takes care of it
+
+    String addr_map = new String();
+    try {
+      String host_map = hostUrl.substring("http://".length(), hostUrl.lastIndexOf(':'));
+      addr_map = InetAddress.getByName(host_map).getHostAddress();
+    } catch (IOException e) {
+      System.err.println("unkown host map");
+    }
+
+    String addr_reduce = new String();
+    try {
+      addr_reduce = InetAddress.getLocalHost().getHostAddress();
+    } catch (IOException e) {
+      System.err.println("unkown host reduce");
+    }
+
+    // if no same rack, just return
+    if (!readTopo(addr_map).equals(readTopo(addr_reduce))) {
+      return;
+    }
+
     // Mark the host as pending
     if (host.getState() == State.PENDING) {
       pendingHosts.add(host);
       notifyAll();
     }
   }
+
+  String readTopo(String addr) {
+    String rack = new String();
+    try {
+      Process p = new ProcessBuilder("bash", "/etc/hadoop/conf/topo.sh", addr).start();
+      int exit_code = p.waitFor();
+      if (exit_code != 0) {
+        System.out.println("abnormal exit");
+      }
+
+      InputStream in = p.getInputStream();
+
+      BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+      StringBuilder out = new StringBuilder();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        out.append(line);
+      }
+      reader.close();
+
+      rack = out.toString();
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println("readTopo exception");
+    }
+    LOG.info("shuffleschedulerimpl topo read: "+addr + "::" + rack);
+    return rack;
+  }
+
 
 
   public synchronized void obsoleteMapOutput(TaskAttemptID mapId) {
@@ -447,13 +501,9 @@ public class ShuffleSchedulerImpl<K,V> implements ShuffleScheduler<K,V> {
     // Safe to take one because we know pendingHosts isn't empty
     MapHost host = iter.next();
 
-    while (host.getHostName() == "local") {
-
-      int numToPick = random.nextInt(pendingHosts.size());
-      for (int i = 0; i < numToPick; ++i) {
-        host = iter.next();
-      }
-
+    int numToPick = random.nextInt(pendingHosts.size());
+    for (int i=0; i < numToPick; ++i) {
+      host = iter.next();
     }
 
     pendingHosts.remove(host);
