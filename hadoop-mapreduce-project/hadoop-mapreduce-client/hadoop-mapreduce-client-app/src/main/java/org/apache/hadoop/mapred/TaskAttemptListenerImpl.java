@@ -737,18 +737,20 @@ public class TaskAttemptListenerImpl extends CompositeService
             TaskAttemptId reduceAttemptId = reduceAttemptMap.get(i);
             String mapperIP = mappersIP.get(mapAttemptId.toString());
             String reducerIP = reducersIP.get(reduceAttemptId.toString());
-            if (sameRack(mapperIP, reducerIP)) {
-              continue;
+
+            // If not same rack, send to gaia
+            if (!sameRack(mapperIP, reducerIP)) {
+
+              FlowInfo flow = new FlowInfo(
+                      mapAttemptId.toString(),
+                      reduceAttemptId.toString(),
+                      mapOutputFilePath,
+                      startOffsetMaps.get(mapAttemptId)[i],
+                      partLengthMaps.get(mapAttemptId)[i],
+                      mapperIP,
+                      reducerIP);
+              flowsMap.put(mapOutputFilePath, flow);
             }
-            FlowInfo flow = new FlowInfo(
-                    mapAttemptId.toString(),
-                    reduceAttemptId.toString(),
-                    mapOutputFilePath,
-                    startOffsetMaps.get(mapAttemptId)[i],
-                    partLengthMaps.get(mapAttemptId)[i],
-                    mapperIP,
-                    reducerIP);
-            flowsMap.put(mapOutputFilePath, flow);
           }
         } // for
 
@@ -782,7 +784,11 @@ public class TaskAttemptListenerImpl extends CompositeService
         System.err.println("unkown reduce host");
       }
 
-      return readTopo(addr_map).equals(readTopo(addr_reduce));
+      boolean ret = readTopo(addr_map).equals(readTopo(addr_reduce));
+
+      LOG.info("COMPARE#" + addr_map + " " + addr_reduce + " " + ret);
+
+      return ret;
     }
 
   } // class Runnable
@@ -811,7 +817,7 @@ public class TaskAttemptListenerImpl extends CompositeService
       e.printStackTrace();
       System.out.println("readTopo exception");
     }
-    System.out.println(addr + "::" + rack);
+    LOG.info(addr + "::" + rack);
     return rack;
   }
 

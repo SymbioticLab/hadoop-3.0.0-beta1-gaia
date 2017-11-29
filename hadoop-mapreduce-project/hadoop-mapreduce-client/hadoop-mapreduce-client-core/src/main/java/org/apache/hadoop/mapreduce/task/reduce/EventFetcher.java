@@ -221,7 +221,7 @@ class EventFetcher<K,V> extends Thread {
       e.printStackTrace();
       System.out.println("readTopo exception");
     }
-    System.out.println(addr + "::" + rack);
+    LOG.info("topo read: "+addr + "::" + rack);
     return rack;
   }
 
