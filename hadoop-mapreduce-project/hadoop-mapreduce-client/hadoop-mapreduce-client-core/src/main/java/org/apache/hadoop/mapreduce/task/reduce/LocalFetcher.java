@@ -165,7 +165,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     File f = new File(newMapOutputFileName.toString());
     long compressedLength = f.length();
-    long decompressedLength = f.length();
+    long decompressedLength = f.length() - 4;
 
     compressedLength -= CryptoUtils.cryptoPadding(job);
     decompressedLength -= CryptoUtils.cryptoPadding(job);

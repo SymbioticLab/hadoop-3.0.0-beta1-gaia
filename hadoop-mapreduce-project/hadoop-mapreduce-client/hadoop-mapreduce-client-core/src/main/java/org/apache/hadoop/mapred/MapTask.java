@@ -1666,7 +1666,9 @@ public class MapTask extends Task {
             spillRec.putIndex(rec, i);
 
             startOffsetMap.put(i, rec.startOffset);
-            partLengthMap.put(i, rec.rawLength);
+            partLengthMap.put(i, rec.partLength);
+            System.out.println("partLength:" + rec.partLength);
+            System.out.println("rawLength:" + rec.rawLength);
 
             writer = null;
           } finally {
@@ -1743,7 +1745,9 @@ public class MapTask extends Task {
             spillRec.putIndex(rec, i);
 
             startOffsetMap.put(i, rec.startOffset);
-            partLengthMap.put(i, rec.rawLength);
+            partLengthMap.put(i, rec.partLength);
+            System.out.println("partLength:" + rec.partLength);
+            System.out.println("rawLength:" + rec.rawLength);
 
             writer = null;
           } catch (IOException e) {
@@ -1903,7 +1907,9 @@ public class MapTask extends Task {
             sr.putIndex(rec, i);
 
             startOffsetMap.put(i, rec.startOffset);
-            partLengthMap.put(i, rec.rawLength);
+            partLengthMap.put(i, rec.partLength);
+            System.out.println("partLength:" + rec.partLength);
+            System.out.println("rawLength:" + rec.rawLength);
           }
           sr.writeToFile(finalIndexFile, job);
         } finally {
@@ -1982,7 +1988,9 @@ public class MapTask extends Task {
           spillRec.putIndex(rec, parts);
 
           startOffsetMap.put(parts, rec.startOffset);
-          partLengthMap.put(parts, rec.rawLength);
+          partLengthMap.put(parts, rec.partLength);
+          System.out.println("partLength:" + rec.partLength);
+          System.out.println("rawLength:" + rec.rawLength);
         }
         spillRec.writeToFile(finalIndexFile, job);
         finalOut.close();
