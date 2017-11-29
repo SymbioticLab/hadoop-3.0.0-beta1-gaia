@@ -20,6 +20,7 @@ package org.apache.hadoop.mapreduce.task.reduce;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -165,10 +166,17 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     */
 
+    /*
     File f = new File(newMapOutputFileName.toString());
     long compressedLength = f.length();
-    long decompressedLength = f.length() - 4;
-    LOG.info("new file length: " + f.length());
+
+    */
+
+    RandomAccessFile raf = new RandomAccessFile(newMapOutputFileName.toString(), "r");
+    long compressedLength = raf.length();
+
+    long decompressedLength = compressedLength - 4;
+    LOG.info("new file length: " + compressedLength);
 
     compressedLength -= CryptoUtils.cryptoPadding(job);
     decompressedLength -= CryptoUtils.cryptoPadding(job);

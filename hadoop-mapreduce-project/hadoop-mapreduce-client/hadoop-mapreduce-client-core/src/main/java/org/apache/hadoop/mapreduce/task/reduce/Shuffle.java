@@ -132,25 +132,28 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
     System.out.println("mapoutputfilemap.size "+ mapOutputFileMap.size() + "numFetchers*" + numFetchers);
 
     // diff rack
-      for (Entry<TaskAttemptID, String> entry: mapOutputFileMap.entrySet()) {
-        int i = entry.getKey().getTaskID().getId();
-        fetchers[i] = new LocalFetcher<K, V>(entry.getKey(), entry.getValue(),
-                jobConf, reduceId, scheduler,
-                merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
-                localMapFiles);
+    int i = 0;
+    for (Entry<TaskAttemptID, String> entry: mapOutputFileMap.entrySet()) {
+      fetchers[i] = new LocalFetcher<K, V>(entry.getKey(), entry.getValue(),
+              jobConf, reduceId, scheduler,
+              merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
+              localMapFiles);
 
-        System.out.println("diff rack localfetcher start: " + i);
-        fetchers[i].start();
-      }
+      System.out.println("diff rack localfetcher start: " + i);
+      fetchers[i].start();
+      i += 1;
+    }
 
     // same rack
-      for (int i=mapOutputFileMap.size(); i < fetchers.length; ++i) {
-        fetchers[i] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger,
-                                       reporter, metrics, this, 
-                                       reduceTask.getShuffleSecret());
-        System.out.println("same rack fetcher start: " + i);
-        fetchers[i].start();
-      }
+    assert (i == mapOutputFileMap.size());
+
+    for (; i < fetchers.length; ++i) {
+      fetchers[i] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger,
+                                     reporter, metrics, this,
+                                     reduceTask.getShuffleSecret());
+      System.out.println("same rack fetcher start: " + i);
+      fetchers[i].start();
+    }
 
 
     // Wait for shuffle to complete successfully
