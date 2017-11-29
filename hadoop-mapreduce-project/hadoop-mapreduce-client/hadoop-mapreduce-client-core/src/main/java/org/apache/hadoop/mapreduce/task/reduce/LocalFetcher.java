@@ -144,6 +144,8 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
 
     Path newMapOutputFileName = new Path(str_file + "_" +
             reduceAttemptID.toString() + str_dot_out);
+    LOG.info("# newmapoutputfilename #" + str_file + "_" +
+            reduceAttemptID.toString() + str_dot_out);
 
     // Read its index to determine the location of our split
     // and its size.
@@ -166,6 +168,7 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
     File f = new File(newMapOutputFileName.toString());
     long compressedLength = f.length();
     long decompressedLength = f.length() - 4;
+    LOG.info("new file length: " + f.length());
 
     compressedLength -= CryptoUtils.cryptoPadding(job);
     decompressedLength -= CryptoUtils.cryptoPadding(job);
