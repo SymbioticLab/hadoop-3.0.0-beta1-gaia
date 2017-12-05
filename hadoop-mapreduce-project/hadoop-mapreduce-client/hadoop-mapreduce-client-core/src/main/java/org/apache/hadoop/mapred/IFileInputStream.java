@@ -209,8 +209,8 @@ public class IFileInputStream extends InputStream {
     int bytesRead = in.read(b, off, len);
 
     if (bytesRead < 0) {
-      // throw new ChecksumException("Checksum Error", 0);
-      System.err.println("checksum error: bytesRead < 0");
+      throw new ChecksumException("Checksum Error", 0);
+      // System.err.println("checksum error: bytesRead < 0");
     }
     
     sum.update(b,off,bytesRead);
@@ -226,8 +226,8 @@ public class IFileInputStream extends InputStream {
       csum = new byte[checksumSize];
       IOUtils.readFully(in, csum, 0, checksumSize);
       if (!sum.compare(csum, 0)) {
-        // throw new ChecksumException("Checksum Error", 0);
-        System.err.println("checksum error: " + csum);
+        throw new ChecksumException("Checksum Error", 0);
+        // System.err.println("checksum error: " + csum);
       }
     }
     return bytesRead;
