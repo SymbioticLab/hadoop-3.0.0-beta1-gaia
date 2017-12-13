@@ -53,6 +53,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.BlockLocation;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -104,6 +106,7 @@ import org.apache.hadoop.yarn.client.api.async.impl.NMClientAsyncImpl;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
+import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.util.TimelineServiceHelper;
 import org.apache.hadoop.yarn.util.timeline.TimelineUtils;
@@ -176,6 +179,8 @@ import com.sun.jersey.api.client.ClientHandlerException;
 @InterfaceAudience.Public
 @InterfaceStability.Unstable
 public class ApplicationMaster {
+  private Path inputFile;
+  ////////////
 
   private static final Log LOG = LogFactory.getLog(ApplicationMaster.class);
 
@@ -332,7 +337,7 @@ public class ApplicationMaster {
   public static void main(String[] args) {
     boolean result = false;
     try {
-      ApplicationMaster appMaster = new ApplicationMaster();
+      ApplicationMaster appMaster = new ApplicationMaster(args);
       LOG.info("Initializing ApplicationMaster");
       boolean doRun = appMaster.init(args);
       if (!doRun) {
@@ -384,9 +389,10 @@ public class ApplicationMaster {
     }
   }
 
-  public ApplicationMaster() {
+  public ApplicationMaster(String[] args) {
     // Set up the configuration
     conf = new YarnConfiguration();
+    inputFile = new Path(args[0]);
   }
 
   /**
@@ -669,6 +675,8 @@ public class ApplicationMaster {
     RegisterApplicationMasterResponse response = amRMClient
         .registerApplicationMaster(appMasterHostname, appMasterRpcPort,
             appMasterTrackingUrl);
+
+    /*
     // Dump out information about cluster capability as seen by the
     // resource manager
     long maxMem = response.getMaximumResourceCapability().getMemorySize();
@@ -714,6 +722,30 @@ public class ApplicationMaster {
       ContainerRequest containerAsk = setupContainerAskForRM();
       amRMClient.addContainerRequest(containerAsk);
     }
+    */
+
+    ////////
+    BlockLocation[] blocks = this.getBlockLocations();
+
+    Priority priority = Records.newRecord(Priority.class);
+    priority.setPriority(0);
+    Resource capacity = Records.newRecord(Resource.class);
+    capacity.setMemory(2048);
+
+    int numOfContainers = 0;
+    for (BlockLocation block : blocks) {
+      ContainerRequest ask = new ContainerRequest(capacity, block.getHosts(), null, priority, false);
+      for (String host : block.getHosts()) {
+        System.out.println(host + " for block " + block.toString());
+      }
+      // LOG.info("Asking for Container for block {}", block.toString());
+      numOfContainers++;
+      amRMClient.addContainerRequest(ask);
+      // blockList.add(new BlockStatus(block));
+    }
+
+    /////////
+
     numRequestedContainers.set(numTotalContainers);
   }
 
@@ -1235,6 +1267,17 @@ public class ApplicationMaster {
         pri);
     LOG.info("Requested container ask: " + request.toString());
     return request;
+  }
+
+  public BlockLocation[] getBlockLocations() throws IOException {
+    // Read the block information from HDFS
+    FileSystem fileSystem = FileSystem.get(conf);
+
+    FileStatus fileStatus = fileSystem.getFileStatus(inputFile);
+    // LOG.info("File status = {}", fileStatus.toString());
+    BlockLocation[] blocks = fileSystem.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
+    // LOG.info("Number of blocks for {} = {}", inputFile.toString() + blocks.length);
+    return blocks;
   }
 
   private boolean fileExist(String filePath) {

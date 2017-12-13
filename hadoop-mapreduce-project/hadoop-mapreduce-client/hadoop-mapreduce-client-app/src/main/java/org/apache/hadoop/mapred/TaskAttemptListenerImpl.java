@@ -20,6 +20,7 @@ package org.apache.hadoop.mapred;
 
 import java.io.*;
 import java.net.InetAddress;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.sun.tools.corba.se.idl.StringGen;
@@ -28,12 +29,6 @@ import edu.umich.gaialib.TaskInfo;
 import edu.umich.gaialib.FlowInfo;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -50,10 +45,7 @@ import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.mapreduce.checkpoint.TaskCheckpointID;
 import org.apache.hadoop.mapreduce.security.token.JobTokenSecretManager;
-import org.apache.hadoop.mapreduce.v2.api.records.TaskId;
-import org.apache.hadoop.mapreduce.v2.api.records.JobId;
-import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId;
-import org.apache.hadoop.mapreduce.v2.api.records.TaskType;
+import org.apache.hadoop.mapreduce.v2.api.records.*;
 import org.apache.hadoop.mapreduce.v2.app.AppContext;
 import org.apache.hadoop.mapreduce.v2.app.TaskAttemptListener;
 import org.apache.hadoop.mapreduce.v2.app.TaskHeartbeatHandler;
@@ -654,13 +646,29 @@ public class TaskAttemptListenerImpl extends CompositeService
       int numTasks = numMapTasks + numReduceTasks;
 
       ArrayList<TaskAttemptId> taskAttemptIds = new ArrayList<>();
-      for(int i = 0; i < numTasks; i += 1) {
+      Set<TaskId> taskIds = new HashSet<>();
+
+      while (true) {
         try {
           TaskAttemptId taskAttemptId = blockingQueue.take();
           taskAttemptIds.add(taskAttemptId);
+          taskIds.add(taskAttemptId.getTaskId());
         } catch (InterruptedException e) {
           LOG.info("TaskHeartbeatHandler thread interrupted");
           return;
+        }
+        // assume task do not fail, only task attempt fail
+        if (taskIds.size() == numTasks) {
+          break;
+        }
+      }
+
+      // by the time reducers launched, map tasks have all succeeded
+      for (TaskAttemptId taskAttemptId: taskAttemptIds) {
+        if (job.getTask(taskAttemptId.getTaskId())
+                .getAttempt(taskAttemptId).getState() !=
+                TaskAttemptState.SUCCEEDED) {
+          taskAttemptIds.remove(taskAttemptId);
         }
       }
 
