@@ -31,7 +31,7 @@ public class ContainerLaunchFailAppMaster extends ApplicationMaster {
     LogFactory.getLog(ContainerLaunchFailAppMaster.class);
 
   public ContainerLaunchFailAppMaster() {
-    super();
+    super(null);
   }
 
   @Override

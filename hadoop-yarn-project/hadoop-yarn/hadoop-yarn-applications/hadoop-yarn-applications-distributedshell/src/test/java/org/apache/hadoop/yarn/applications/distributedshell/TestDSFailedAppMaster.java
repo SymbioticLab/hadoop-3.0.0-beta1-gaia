@@ -28,6 +28,10 @@ public class TestDSFailedAppMaster extends ApplicationMaster {
 
   private static final Log LOG = LogFactory.getLog(TestDSFailedAppMaster.class);
 
+  TestDSFailedAppMaster() {
+    super(null);
+  }
+
   @Override
   public void run() throws YarnException, IOException, InterruptedException {
     super.run();

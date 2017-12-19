@@ -1183,7 +1183,7 @@ public class TestDistributedShell {
 
   @Test
   public void testDSTimelineClientWithConnectionRefuse() throws Exception {
-    ApplicationMaster am = new ApplicationMaster();
+    ApplicationMaster am = new ApplicationMaster(null);
 
     TimelineClientImpl client = new TimelineClientImpl() {
       @Override

@@ -26,6 +26,10 @@ public class TestDSSleepingAppMaster extends ApplicationMaster{
   private static final Log LOG = LogFactory.getLog(TestDSSleepingAppMaster.class);
   private static final long SLEEP_TIME = 5000;
 
+  TestDSSleepingAppMaster() {
+    super(null);
+  }
+
   public static void main(String[] args) {
     boolean result = false;
     try {

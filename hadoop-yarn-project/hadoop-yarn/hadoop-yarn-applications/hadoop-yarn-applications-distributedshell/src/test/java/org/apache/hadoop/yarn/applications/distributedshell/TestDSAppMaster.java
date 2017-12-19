@@ -54,6 +54,10 @@ public class TestDSAppMaster {
     private int threadsLaunched = 0;
     public List<String> yarnShellIds = new ArrayList<String>();
 
+    TestAppMaster() {
+      super(null);
+    }
+
     @Override
     protected Thread createLaunchContainerThread(Container allocatedContainer,
         String shellId) {
@@ -168,7 +172,7 @@ public class TestDSAppMaster {
 
   @Test
   public void testTimelineClientInDSAppMaster() throws Exception {
-    ApplicationMaster appMaster = new ApplicationMaster();
+    ApplicationMaster appMaster = new ApplicationMaster(null);
     appMaster.appSubmitterUgi =
         UserGroupInformation.createUserForTesting("foo", new String[]{"bar"});
     Configuration conf = new YarnConfiguration();
