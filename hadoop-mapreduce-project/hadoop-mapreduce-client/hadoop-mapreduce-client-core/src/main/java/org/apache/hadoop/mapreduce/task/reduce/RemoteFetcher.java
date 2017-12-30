@@ -17,11 +17,16 @@
  */
 package org.apache.hadoop.mapreduce.task.reduce;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.crypto.SecretKey;
 
@@ -39,42 +44,50 @@ import org.apache.hadoop.mapred.SpillRecord;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.CryptoUtils;
 
+import org.apache.hadoop.fs.Path;
+
 /**
  * LocalFetcher is used by LocalJobRunner to perform a local filesystem
  * fetch.
  */
-class LocalFetcher<K,V> extends Fetcher<K, V> {
+class RemoteFetcher<K,V> extends Fetcher<K, V> {
 
   private static final Log LOG = LogFactory.getLog(LocalFetcher.class);
 
   private static final MapHost LOCALHOST = new MapHost("local", "local");
 
   private JobConf job;
-  private Map<TaskAttemptID, MapOutputFile> localMapFiles;
+  // private Map<TaskAttemptID, MapOutputFile> localMapFiles;
+  private TaskAttemptID mapAttemptID;
+  private String mapOutputFile;
+  private TaskAttemptID reduceAttemptID;
 
-  public LocalFetcher(JobConf job, TaskAttemptID reduceId,
-                 ShuffleSchedulerImpl<K, V> scheduler,
-                 MergeManager<K,V> merger,
-                 Reporter reporter, ShuffleClientMetrics metrics,
-                 ExceptionReporter exceptionReporter,
-                 SecretKey shuffleKey,
-                 Map<TaskAttemptID, MapOutputFile> localMapFiles) {
+  public RemoteFetcher(TaskAttemptID mapAttempID, String mapOutputFile,
+                      JobConf job, TaskAttemptID reduceId,
+                      ShuffleSchedulerImpl<K, V> scheduler,
+                      MergeManager<K,V> merger,
+                      Reporter reporter, ShuffleClientMetrics metrics,
+                      ExceptionReporter exceptionReporter,
+                      SecretKey shuffleKey,
+                      Map<TaskAttemptID, MapOutputFile> localMapFiles) {
     super(job, reduceId, scheduler, merger, reporter, metrics,
         exceptionReporter, shuffleKey);
 
     this.job = job;
-    this.localMapFiles = localMapFiles;
+    // this.localMapFiles = localMapFiles;
 
-    setName("localfetcher#" + id);
+    setName("remotefetcher#" + id);
     setDaemon(true);
+
+    this.mapAttemptID = mapAttempID;
+    this.mapOutputFile = mapOutputFile;
+    this.reduceAttemptID = reduceId;
   }
 
   public void run() {
     // Create a worklist of task attempts to work over.
     Set<TaskAttemptID> maps = new HashSet<TaskAttemptID>();
-    for (TaskAttemptID map : localMapFiles.keySet()) {
-      maps.add(map);
-    }
+    maps.add(mapAttemptID);
 
     while (maps.size() > 0) {
       try {
@@ -117,16 +130,32 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
    */
   private boolean copyMapOutput(TaskAttemptID mapTaskId) throws IOException {
     // Figure out where the map task stored its output.
-    Path mapOutputFileName = localMapFiles.get(mapTaskId).getOutputFile();
-    Path indexFileName = mapOutputFileName.suffix(".index");
+    assert (mapOutputFile != null);
+
+    // Path mapOutputFileName = new Path(mapOutputFile);
+    // Path indexFileName = mapOutputFileName.suffix(".index");
+
+    int pos_dot = mapOutputFile.lastIndexOf('.');
+    if (pos_dot == -1) {
+      LOG.info("filename wrong ??? " + mapOutputFile);
+    }
+
+    String str_file = mapOutputFile.substring(0, pos_dot);
+    String str_dot_out = mapOutputFile.substring(pos_dot);
+
+    Path newMapOutputFileName = new Path(str_file + "_" +
+            reduceAttemptID.toString() + str_dot_out);
+    LOG.info("# newmapoutputfilename #" + str_file + "_" +
+            reduceAttemptID.toString() + str_dot_out);
 
     // Read its index to determine the location of our split
     // and its size.
-    SpillRecord sr = new SpillRecord(indexFileName, job);
-    IndexRecord ir = sr.getIndex(reduce);
 
-    long compressedLength = ir.partLength;
-    long decompressedLength = ir.rawLength;
+    RandomAccessFile raf = new RandomAccessFile(newMapOutputFileName.toString(), "r");
+    long compressedLength = raf.length();
+
+    long decompressedLength = compressedLength - 4;
+    LOG.info("new file length: " + compressedLength);
 
     compressedLength -= CryptoUtils.cryptoPadding(job);
     decompressedLength -= CryptoUtils.cryptoPadding(job);
@@ -142,17 +171,21 @@ class LocalFetcher<K,V> extends Fetcher<K, V> {
     }
 
     // Go!
-    LOG.info("localfetcher#" + id + " about to shuffle output of map " + 
+    LOG.info("remotefetcher#" + id + " about to shuffle output of map " +
              mapOutput.getMapId() + " decomp: " +
              decompressedLength + " len: " + compressedLength + " to " +
              mapOutput.getDescription());
 
     // now read the file, seek to the appropriate section, and send it.
     FileSystem localFs = FileSystem.getLocal(job).getRaw();
-    FSDataInputStream inStream = localFs.open(mapOutputFileName);
+
+    LOG.info("***localFS Uri*** " + localFs.getUri());
+
+    FSDataInputStream inStream = localFs.open(newMapOutputFileName);
+
     try {
       inStream = CryptoUtils.wrapIfNecessary(job, inStream);
-      inStream.seek(ir.startOffset + CryptoUtils.cryptoPadding(job));
+      inStream.seek(0 + CryptoUtils.cryptoPadding(job));
       mapOutput.shuffle(LOCALHOST, inStream, compressedLength,
           decompressedLength, metrics, reporter);
     } finally {

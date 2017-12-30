@@ -121,43 +121,55 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
     barrier.take();
     System.out.println("mapoutputfilemap.size new" + mapOutputFileMap.size());
 
-    final int numFetchers = jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
-    Fetcher<K,V>[] fetchers = new Fetcher[mapOutputFileMap.size() + numFetchers];
+    // Start the map-output fetcher threads
+    boolean isLocal = localMapFiles != null;
+    final int numFetchers = isLocal ? 1 :
+            jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
+    Fetcher<K, V>[] fetchers;
 
-    System.out.println("mapoutputfilemap.size "+ mapOutputFileMap.size() + "numFetchers*" + numFetchers);
-
-    // diff rack
-    int i = 0;
-    for (Entry<TaskAttemptID, String> entry: mapOutputFileMap.entrySet()) {
-      fetchers[i] = new LocalFetcher<K, V>(entry.getKey(), entry.getValue(),
-              jobConf, reduceId, scheduler,
+    if (isLocal) {
+      fetchers = new Fetcher[numFetchers];
+      fetchers[0] = new LocalFetcher<K, V>(jobConf, reduceId, scheduler,
               merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
               localMapFiles);
+      fetchers[0].start();
+    } else {
 
-      System.out.println("diff rack localfetcher start: " + i);
-      fetchers[i].start();
-      i += 1;
+      fetchers = new Fetcher[mapOutputFileMap.size() + numFetchers];
+      System.out.println("mapoutputfilemap.size " + mapOutputFileMap.size() + "numFetchers*" + numFetchers);
+
+      // diff rack
+      int i = 0;
+      for (Entry<TaskAttemptID, String> entry : mapOutputFileMap.entrySet()) {
+        fetchers[i] = new RemoteFetcher<K, V>(entry.getKey(), entry.getValue(),
+                jobConf, reduceId, scheduler,
+                merger, reporter, metrics, this, reduceTask.getShuffleSecret(),
+                localMapFiles);
+
+        System.out.println("diff rack localfetcher start: " + i);
+        fetchers[i].start();
+        i += 1;
+      }
+
+      // same rack
+
+      // note: in the original hadoop, always shuffle in the yarn setup
+      // ie: mapreduce.framework.name == yarn
+      // no matter in the single node cluster, or when map and reduce run on the same node (tested)
+
+      if (i != mapOutputFileMap.size()) {
+        System.err.println("mapOutputFileMap changed ?????!!!!!");
+      }
+
+      for (; i < fetchers.length; ++i) {
+        fetchers[i] = new Fetcher<K, V>(jobConf, reduceId, scheduler, merger,
+                reporter, metrics, this,
+                reduceTask.getShuffleSecret());
+
+        System.out.println("same rack fetcher start: " + i);
+        fetchers[i].start();
+      }
     }
-
-    // same rack
-
-    // note: in the original hadoop, always shuffle in the yarn setup
-    // ie: mapreduce.framework.name == yarn
-    // no matter in the single node cluster, or when map and reduce run on the same node (tested)
-
-    if (i != mapOutputFileMap.size()) {
-      System.err.println("mapOutputFileMap changed ?????!!!!!");
-    }
-
-    for (; i < fetchers.length; ++i) {
-      fetchers[i] = new Fetcher<K,V>(jobConf, reduceId, scheduler, merger,
-                                     reporter, metrics, this,
-                                     reduceTask.getShuffleSecret());
-
-      System.out.println("same rack fetcher start: " + i);
-      fetchers[i].start();
-    }
-
 
     // Wait for shuffle to complete successfully
     while (!scheduler.waitUntilDone(PROGRESS_FREQUENCY)) {
