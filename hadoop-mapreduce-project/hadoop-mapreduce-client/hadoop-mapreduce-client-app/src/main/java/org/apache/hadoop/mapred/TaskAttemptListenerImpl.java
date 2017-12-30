@@ -663,17 +663,28 @@ public class TaskAttemptListenerImpl extends CompositeService
         }
       }
 
+      // if any map task fail, job fail, no need to send to gaia
+      for (TaskId taskId: taskIds) {
+        if (job.getTask(taskId).getState() == TaskState.FAILED ||
+                job.getTask(taskId).getState() == TaskState.KILLED) {
+          barrier.set(true);
+          return;
+        }
+      }
+
       // by the time reducers launched, map tasks have all succeeded
       for (TaskAttemptId taskAttemptId: taskAttemptIds) {
         if (job.getTask(taskAttemptId.getTaskId())
-                .getAttempt(taskAttemptId).getState() !=
-                TaskAttemptState.SUCCEEDED) {
-          taskAttemptIds.remove(taskAttemptId);
+                .getType() == TaskType.MAP &&
+                job.getTask(taskAttemptId.getTaskId())
+                  .getAttempt(taskAttemptId).getState() !=
+                  TaskAttemptState.SUCCEEDED) {
+            taskAttemptIds.remove(taskAttemptId);
         }
       }
 
       try {
-        gaia(taskAttemptIds);
+        // gaia(taskAttemptIds);
       } catch (Throwable e){
         LOG.info("GaiaClient Exception");
         e.printStackTrace();
@@ -778,7 +789,7 @@ public class TaskAttemptListenerImpl extends CompositeService
       try {
         addr_map = InetAddress.getByName(host_map).getHostAddress();
       } catch (IOException e) {
-        System.err.println("unkown map host");
+        System.err.println("unknown map host");
       }
 
       // clnode088.clemson.cloudlab.us:8042
@@ -788,7 +799,7 @@ public class TaskAttemptListenerImpl extends CompositeService
       try {
         addr_reduce = InetAddress.getByName(host_reduce).getHostAddress();
       } catch (IOException e) {
-        System.err.println("unkown reduce host");
+        System.err.println("unknown reduce host");
       }
 
       boolean ret = readTopo(addr_map).equals(readTopo(addr_reduce));
