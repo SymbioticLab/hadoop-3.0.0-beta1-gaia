@@ -684,7 +684,7 @@ public class TaskAttemptListenerImpl extends CompositeService
       }
 
       try {
-        // gaia(taskAttemptIds);
+        gaia(taskAttemptIds);
       } catch (Throwable e){
         LOG.info("GaiaClient Exception");
         e.printStackTrace();
