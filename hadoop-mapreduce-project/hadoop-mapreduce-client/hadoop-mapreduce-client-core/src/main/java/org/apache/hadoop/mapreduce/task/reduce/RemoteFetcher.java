@@ -179,9 +179,15 @@ class RemoteFetcher<K,V> extends Fetcher<K, V> {
 
     // Read its index to determine the location of our split
     // and its size.
+    long compressedLength;
+    try {
+      RandomAccessFile raf = new RandomAccessFile(newMapOutputFileName.toString(), "r");
+      compressedLength = raf.length();
 
-    RandomAccessFile raf = new RandomAccessFile(newMapOutputFileName.toString(), "r");
-    long compressedLength = raf.length();
+    } catch (IOException e) {
+      LOG.info("java.io.FileNotFoundException (No such file or directory)");
+      return false;
+    }
 
     long decompressedLength = compressedLength - 4;
     LOG.info("new file length: " + compressedLength);
