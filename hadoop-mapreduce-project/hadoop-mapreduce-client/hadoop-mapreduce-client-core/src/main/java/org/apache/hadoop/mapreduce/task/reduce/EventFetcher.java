@@ -183,7 +183,10 @@ class EventFetcher<K,V> extends Thread {
 
           // if no same rack, need localfetcher
           if (!readTopo(addr_map).equals(readTopo(addr_reduce))) {
-            mapOutputFileMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);
+            mapOutputFileMap.put(event.getTaskAttemptId(),
+                    event.getTaskTrackerHttp() + "FIND ME" +
+                            // todo: need to be changed later
+                    mapOutputPaths[i]);
           }
 
           tempMap.put(event.getTaskAttemptId(), mapOutputPaths[i]);

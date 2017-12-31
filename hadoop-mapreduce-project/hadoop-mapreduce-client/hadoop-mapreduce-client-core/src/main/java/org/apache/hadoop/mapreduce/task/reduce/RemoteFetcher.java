@@ -21,10 +21,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.net.URI;
+import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -60,6 +58,7 @@ class RemoteFetcher<K,V> extends Fetcher<K, V> {
   // private Map<TaskAttemptID, MapOutputFile> localMapFiles;
   private TaskAttemptID mapAttemptID;
   private String mapOutputFile;
+  private String taskTrackerHttp;
   private TaskAttemptID reduceAttemptID;
 
   public RemoteFetcher(TaskAttemptID mapAttempID, String mapOutputFile,
@@ -80,8 +79,25 @@ class RemoteFetcher<K,V> extends Fetcher<K, V> {
     setDaemon(true);
 
     this.mapAttemptID = mapAttempID;
-    this.mapOutputFile = mapOutputFile;
     this.reduceAttemptID = reduceId;
+
+    int idx = mapOutputFile.indexOf("FIND ME");
+    this.taskTrackerHttp = mapOutputFile.substring(0, idx);
+    this.mapOutputFile = mapOutputFile.substring(idx + "FIND ME".length());
+  }
+
+  static URI getBaseURI(TaskAttemptID reduceId, String url) {
+    StringBuffer baseUrl = new StringBuffer(url);
+    if (!url.endsWith("/")) {
+      baseUrl.append("/");
+    }
+    baseUrl.append("mapOutput?job=");
+    baseUrl.append(reduceId.getJobID());
+    baseUrl.append("&reduce=");
+    baseUrl.append(reduceId.getTaskID().getId());
+    baseUrl.append("&map=");
+    URI u = URI.create(baseUrl.toString());
+    return u;
   }
 
   public void run() {
@@ -89,7 +105,22 @@ class RemoteFetcher<K,V> extends Fetcher<K, V> {
     Set<TaskAttemptID> maps = new HashSet<TaskAttemptID>();
     maps.add(mapAttemptID);
 
+    int maxFailure = 5;
+    int numFailure = 0;
+
     while (maps.size() > 0) {
+      // too many failure, fallback to Fetcher
+      if (numFailure > maxFailure) {
+        URI u = getBaseURI(reduceAttemptID, taskTrackerHttp);
+        // URI u = getBaseURI(reduceId, "http://localhost:13562");
+        String hostUrl = u.toString();
+        String hostName = u.getHost() + ":" + u.getPort();
+
+        scheduler.addKnownMapOutput(hostName, hostUrl, mapAttemptID);
+        break;
+      }
+      numFailure += 1;
+
       try {
         // If merge is on, block
         merger.waitForResource();
@@ -110,6 +141,7 @@ class RemoteFetcher<K,V> extends Fetcher<K, V> {
    */
   private void doCopy(Set<TaskAttemptID> maps) throws IOException {
     Iterator<TaskAttemptID> iter = maps.iterator();
+
     while (iter.hasNext()) {
       TaskAttemptID map = iter.next();
       LOG.debug("LocalFetcher " + id + " going to fetch: " + map);
@@ -131,9 +163,6 @@ class RemoteFetcher<K,V> extends Fetcher<K, V> {
   private boolean copyMapOutput(TaskAttemptID mapTaskId) throws IOException {
     // Figure out where the map task stored its output.
     assert (mapOutputFile != null);
-
-    // Path mapOutputFileName = new Path(mapOutputFile);
-    // Path indexFileName = mapOutputFileName.suffix(".index");
 
     int pos_dot = mapOutputFile.lastIndexOf('.');
     if (pos_dot == -1) {

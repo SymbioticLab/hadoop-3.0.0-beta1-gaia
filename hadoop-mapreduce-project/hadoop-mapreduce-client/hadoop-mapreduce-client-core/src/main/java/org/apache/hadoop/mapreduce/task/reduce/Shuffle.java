@@ -125,7 +125,7 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
     boolean isLocal = localMapFiles != null;
     final int numFetchers = isLocal ? 1 :
             jobConf.getInt(MRJobConfig.SHUFFLE_PARALLEL_COPIES, 5);
-    Fetcher<K, V>[] fetchers;
+    Fetcher<K,V>[] fetchers;
 
     if (isLocal) {
       fetchers = new Fetcher[numFetchers];
@@ -134,7 +134,6 @@ public class Shuffle<K, V> implements ShuffleConsumerPlugin<K, V>, ExceptionRepo
               localMapFiles);
       fetchers[0].start();
     } else {
-
       fetchers = new Fetcher[mapOutputFileMap.size() + numFetchers];
       System.out.println("mapoutputfilemap.size " + mapOutputFileMap.size() + "numFetchers*" + numFetchers);
 
