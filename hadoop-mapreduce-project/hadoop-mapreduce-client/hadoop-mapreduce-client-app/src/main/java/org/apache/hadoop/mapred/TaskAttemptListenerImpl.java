@@ -673,13 +673,15 @@ public class TaskAttemptListenerImpl extends CompositeService
       }
 
       // by the time reducers launched, map tasks have all succeeded
-      for (TaskAttemptId taskAttemptId: taskAttemptIds) {
+      ListIterator<TaskAttemptId> itTaskAttemptId = taskAttemptIds.listIterator();
+      while (itTaskAttemptId.hasNext()) {
+        TaskAttemptId taskAttemptId = itTaskAttemptId.next();
         if (job.getTask(taskAttemptId.getTaskId())
                 .getType() == TaskType.MAP &&
                 job.getTask(taskAttemptId.getTaskId())
                   .getAttempt(taskAttemptId).getState() !=
                   TaskAttemptState.SUCCEEDED) {
-            taskAttemptIds.remove(taskAttemptId);
+            itTaskAttemptId.remove();
         }
       }
 
