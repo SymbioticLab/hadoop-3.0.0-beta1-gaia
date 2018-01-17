@@ -713,8 +713,15 @@ public class TaskAttemptListenerImpl extends CompositeService
       int numTasks = numMapTasks + numReduceTasks;
 
       // GaiaClient gaiaClient = new GaiaClient("manager", 50051);
+      // GaiaClient gaiaClient = new GaiaClient("dc1master", 50051);
 
-      GaiaClient gaiaClient = new GaiaClient("dc1master", 50051);
+      String addr_self = InetAddress.getLocalHost().getHostAddress();
+      // 10.0.1.1
+      int idx = addr_self.lastIndexOf('.');
+      String addr_master = addr_self.substring(0, idx) + "253";
+      // 10.0.1.253
+
+      GaiaClient gaiaClient = new GaiaClient(addr_master, 50051);
 
       try {
 
