@@ -33,6 +33,10 @@ align-text@^0.1.1, align-text@^0.1.3:
     longest "^1.0.1"
     repeat-string "^1.5.2"
 
+almond@~0.3.1:
+  version "0.3.3"
+  resolved "https://registry.yarnpkg.com/almond/-/almond-0.3.3.tgz#a0e7c95ac7624d6417b4494b1e68bff693168a20"
+
 alter@~0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/alter/-/alter-0.2.0.tgz#c7588808617572034aae62480af26b1d4d1cb3cd"
@@ -1730,6 +1734,14 @@ ember-export-application-global@1.0.5:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/ember-export-application-global/-/ember-export-application-global-1.0.5.tgz#73bd641b19e3474190f717c9b504617511506bea"
 
+ember-lodash@0.0.10:
+  version "0.0.10"
+  resolved "https://registry.yarnpkg.com/ember-lodash/-/ember-lodash-0.0.10.tgz#edf132aa54a983a87543a093615df03892c9a15c"
+  dependencies:
+    broccoli-merge-trees "^1.1.1"
+    ember-cli-babel "^5.1.5"
+    lodash-es "^3.10.0"
+
 ember-qunit@^0.4.18:
   version "0.4.24"
   resolved "https://registry.yarnpkg.com/ember-qunit/-/ember-qunit-0.4.24.tgz#b54cf6688c442d07eacea47c3285879cdd7c2163"
@@ -2788,6 +2800,10 @@ jodid25519@^1.0.0:
   dependencies:
     jsbn "~0.1.0"
 
+jquery-mousewheel@~3.1.13:
+  version "3.1.13"
+  resolved "https://registry.yarnpkg.com/jquery-mousewheel/-/jquery-mousewheel-3.1.13.tgz#06f0335f16e353a695e7206bf50503cb523a6ee5"
+
 js-tokens@1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-1.0.1.tgz#cc435a5c8b94ad15acb7983140fc80182c89aeae"
@@ -2944,6 +2960,10 @@ loader.js@4.2.3:
 lockfile@~1.0.1:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/lockfile/-/lockfile-1.0.3.tgz#2638fc39a0331e9cac1a04b71799931c9c50df79"
+
+lodash-es@^3.10.0:
+  version "3.10.1"
+  resolved "https://registry.yarnpkg.com/lodash-es/-/lodash-es-3.10.1.tgz#a1c85d9829c9009004339dc3846dbabb46cf4e19"
 
 lodash-node@^2.4.1:
   version "2.4.1"
@@ -4251,9 +4271,12 @@ sanitize-filename@^1.5.3:
   dependencies:
     truncate-utf8-bytes "^1.0.0"
 
-select2@4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/select2/-/select2-4.0.0.tgz#81b461456c77148e7e422eb63bd71ca0b254fce7"
+select2@4.0.6:
+  version "4.0.6"
+  resolved "https://registry.yarnpkg.com/select2/-/select2-4.0.6.tgz#88697c96e08b65a5963c2806c1d5eefbceec0a7e"
+  dependencies:
+    almond "~0.3.1"
+    jquery-mousewheel "~3.1.13"
 
 "semver@2 >=2.2.1 || 3.x || 4 || 5", "semver@2 || 3 || 4 || 5", "semver@2.x || 3.x || 4 || 5", "semver@4 || 5", "semver@^2.3.0 || 3.x || 4 || 5", semver@^5.1.0, semver@^5.3.0:
   version "5.3.0"
